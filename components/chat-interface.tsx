@@ -307,14 +307,25 @@ export function ChatInterface({ figure }: { figure: string }) {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto mb-6 space-y-4">
           {messages.map((msg, idx) => (
-            <div key={idx} className={`max-w-md px-4 py-3 rounded-lg group border-2 ${msg.role === "user" ? "border-[#a38d68] bg-[#fff7ed] text-[#5f2712]" : "border-[#e4d5bb] bg-[#fff7ed] text-[#494234]"}`>
-
+            <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <Card
+                className={`
+                  max-w-md px-4 py-3 rounded-lg group
+                  ${
+                    msg.role === "user"
+                      ? "bg-amber-600 text-white"
+                      : "bg-amber-100 dark:bg-slate-700 text-amber-900 dark:text-amber-50"
+                  }
+                `}
+              >
                 <p className="text-sm leading-relaxed whitespace-pre-line">{msg.content}</p>
                 {msg.role === "assistant" && (
                   <button
                     onClick={() => speakText(msg.content)}
                     className="mt-2 text-xs opacity-60 hover:opacity-100 transition-opacity"
-                    title="Play audio"> Read aloud
+                    title="Play audio"
+                  >
+                    🔊 Read aloud
                   </button>
                 )}
               </Card>
@@ -335,7 +346,7 @@ export function ChatInterface({ figure }: { figure: string }) {
         <div className="flex gap-3 items-center">
           <select
             value={language}
-            className="border border-[#a38d68] rounded px-2 py-2 bg-white/90 text-sm text-[#494234]"
+            className="border border-amber-200 dark:border-slate-600 rounded px-2 py-2 bg-white dark:bg-slate-800 text-sm text-amber-900 dark:text-amber-100"
             onChange={(e) => setLanguage(e.target.value as LangCode)}
             title="Language"
           >
@@ -349,7 +360,7 @@ export function ChatInterface({ figure }: { figure: string }) {
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
             placeholder={`Ask ${figure} about their era...`}
             disabled={loading}
-            className="border-[#a38d68]"
+            className="border-amber-200 dark:border-slate-600"
           />
           <Button
             onClick={toggleListening}
@@ -454,9 +465,3 @@ export function ChatInterface({ figure }: { figure: string }) {
     </>
   )
 }
-
-
-
-
-
-
