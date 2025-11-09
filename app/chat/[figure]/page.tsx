@@ -13,7 +13,7 @@ export default function ChatPage() {
     <main className="min-h-screen">
       <div className="px-4 py-10">
         <div className="scroll-wrap">
-          <div className="scroll-content">
+          <div className="scroll-inner">
             {/* Header inside scroll */}
             <div className="mb-6">
               <div className="flex items-center justify-between">
@@ -37,4 +37,3 @@ export default function ChatPage() {
     </main>
   )
 }
-

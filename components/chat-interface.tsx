@@ -267,7 +267,7 @@ export function ChatInterface({ figure }: { figure: string }) {
 
   return (
     <>
-      <div className="max-w-4xl mx-auto px-6 py-8 flex flex-col h-screen">
+      <div className="max-w-4xl mx-auto px-6 py-8 flex flex-col min-h-[60vh]">
         {/* Messages */}
         <div className="flex-1 overflow-y-auto mb-6 space-y-4">
           {messages.map((msg, idx) => (
