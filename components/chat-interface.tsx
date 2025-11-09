@@ -125,13 +125,29 @@ export function ChatInterface({ figure }: { figure: string }) {
     stopSpeech()
     setIsSpeaking(true)
 
-    // Add speech variations
-    const textWithVariations = addSpeechVariations(text)
+    // Prepare text for speech (optionally translate, then add variations)
+    let speechText = text
+    try {
+      if (language && language !== 'en') {
+        const target = langToBCP47(language)
+        const tr = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetLanguage: target, texts: [text] })
+        })
+        if (tr.ok) {
+          const data = await tr.json()
+          const translated = Array.isArray(data.translations) ? data.translations[0] : (data.translatedTexts?.[0] ?? '')
+          if (translated) speechText = translated
+        }
+      }
+    } catch {}
+    const textWithVariations = addSpeechVariations(speechText)
 
     try {
       // If non-English, prefer browser TTS so locale/voice matches immediately
       if (language !== 'en') {
-        useBrowserTTS(text)
+        useBrowserTTS(textWithVariations)
         return
       }
       // Try Murf AI TTS first with gender-based voice selection
@@ -145,7 +161,7 @@ export function ChatInterface({ figure }: { figure: string }) {
 
       if (data.fallbackToBrowser) {
         // Fallback to browser TTS if Murf fails or is not configured
-        useBrowserTTS(text)
+        useBrowserTTS(textWithVariations)
         return
       }
 
@@ -171,12 +187,12 @@ export function ChatInterface({ figure }: { figure: string }) {
 
         await audio.play()
       } else {
-        useBrowserTTS(text)
+        useBrowserTTS(textWithVariations)
       }
     } catch (error) {
       console.error('Murf AI TTS error:', error)
       // Fallback to browser TTS
-      useBrowserTTS(text)
+      useBrowserTTS(textWithVariations)
     }
   }
 
