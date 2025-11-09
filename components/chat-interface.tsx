@@ -31,8 +31,6 @@ export function ChatInterface({ figure }: { figure: string }) {
   const [language, setLanguage] = useState<LangCode>('en')
   const [autoLangCode, setAutoLangCode] = useState<string>('en-US')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
-  const [profileUrl, setProfileUrl] = useState<string | null>(null)
-  const [realName, setRealName] = useState<string>(figure)
   const [figureGender, setFigureGender] = useState<'male' | 'female'>('male')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
@@ -56,28 +54,7 @@ export function ChatInterface({ figure }: { figure: string }) {
     setSttSupported(supported)
   }, [])
 
-  // Load a Wikipedia profile image for this figure
-  useEffect(() => {
-    let canceled = false
-    const run = async () => {
-      try {
-        const r = await fetch('/api/wikipedia-images', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ figure })
-        })
-        if (r.ok) {
-          const data = await r.json()
-          if (!canceled) {
-            setProfileUrl(data?.url || null)
-            setRealName(data?.name || figure)
-          }
-        }
-      } catch {}
-    }
-    if (figure) run()
-    return () => { canceled = true }
-  }, [figure])
+  // Removed Wikipedia integration
 
   // Resolve figure language if using auto mode
   useEffect(() => {
@@ -130,17 +107,42 @@ export function ChatInterface({ figure }: { figure: string }) {
     }
   }
 
+  // Add speech variations like coughs and laughs
+  const addSpeechVariations = (text: string): string => {
+    const sentences = text.split(/([.!?]+)/).filter(s => s.trim())
+    const variations = [
+      { chance: 0.05, sound: '*cough* ' },
+      { chance: 0.03, sound: '*chuckles* ' },
+      { chance: 0.02, sound: '*thoughtful pause* ' },
+    ]
+
+    let result = ''
+    for (let i = 0; i < sentences.length; i++) {
+      const sentence = sentences[i]
+      // Maybe add a variation before this sentence
+      if (i > 0 && Math.random() < 0.1) {
+        const variation = variations.find(v => Math.random() < v.chance)
+        if (variation) result += variation.sound
+      }
+      result += sentence
+    }
+    return result
+  }
+
   const speakText = async (text: string) => {
     // Stop any current audio
     stopSpeech()
     setIsSpeaking(true)
+
+    // Add speech variations
+    const textWithVariations = addSpeechVariations(text)
 
     try {
       // Try Murf AI TTS first with gender-based voice selection
       const response = await fetch('/api/elevenlabs-tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, gender: figureGender })
+        body: JSON.stringify({ text: textWithVariations, gender: figureGender })
       })
 
       const data = await response.json()
@@ -289,6 +291,18 @@ export function ChatInterface({ figure }: { figure: string }) {
     try { localStorage.setItem('historica-progress', JSON.stringify(p)) } catch {}
   }
 
+  const resetJourney = () => {
+    if (confirm('Are you sure you want to reset your entire journey? This will clear all progress, points, and badges.')) {
+      try {
+        localStorage.removeItem('historica-progress')
+        alert('Your journey has been reset!')
+        window.location.reload()
+      } catch (error) {
+        console.error('Error resetting journey:', error)
+      }
+    }
+  }
+
   const handleSend = async () => {
     if (!input.trim() || loading) return
 
@@ -389,35 +403,10 @@ export function ChatInterface({ figure }: { figure: string }) {
   return (
     <>
       <div className="max-w-4xl mx-auto px-6 py-8 flex flex-col min-h-[60vh]">
-        {/* Figure header */}
-        <div className="mb-4 flex items-center gap-3">
-          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#a38d68] bg-[#fff7ed] flex items-center justify-center shadow-md">
-            {profileUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={profileUrl} alt={`${realName} portrait`} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-[#a16207] text-2xl">🗝️</span>
-            )}
-          </div>
-          <div className="leading-tight">
-            <div className="text-xl font-bold text-[#5f2712]">{realName}</div>
-            <div className="text-sm text-[#8e7555]">Historical Figure</div>
-          </div>
-        </div>
         {/* Messages */}
         <div className="flex-1 overflow-y-auto mb-6 space-y-4">
           {messages.map((msg, idx) => (
-            <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start items-start gap-2"}`}>
-              {msg.role === "assistant" && (
-                <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-[#a38d68] bg-[#fff7ed] flex items-center justify-center flex-shrink-0 shadow-sm">
-                  {profileUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={profileUrl} alt={`${realName}`} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-[#a16207] text-sm">🗝️</span>
-                  )}
-                </div>
-              )}
+            <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <Card
                 className={`
                   max-w-md px-4 py-3 rounded-lg group
@@ -475,7 +464,7 @@ export function ChatInterface({ figure }: { figure: string }) {
           <Button
             onClick={toggleListening}
             disabled={loading || !sttSupported}
-            className={`liquid ${isListening ? 'bg-red-600 hover:bg-red-700' : ''}`}
+            className={`${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-[#d97706] hover:bg-[#b45309]'} text-white`}
             title={sttSupported ? (isListening ? 'Stop listening' : 'Speak your question') : 'Speech input not supported in this browser'}
           >
             {isListening ? 'Stop Mic' : 'Speak'}
@@ -483,7 +472,7 @@ export function ChatInterface({ figure }: { figure: string }) {
           <Button
             onClick={handleSend}
             disabled={loading || !input.trim()}
-            className="liquid"
+            className="bg-[#d97706] hover:bg-[#b45309] text-white"
           >
             Send
           </Button>
@@ -514,7 +503,7 @@ export function ChatInterface({ figure }: { figure: string }) {
         <button
           onClick={handleExportPdf}
           disabled={exporting}
-          className="w-auto px-4 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-transform flex items-center justify-center text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[#d97706] liquid bg-transparent text-[#d97706]"
+          className="w-auto px-4 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-transform flex items-center justify-center text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed bg-[#d97706] hover:bg-[#b45309] text-white"
           title="Save important points and timeline as PDF"
         >
           {exporting ? 'Preparing…' : 'Save Summary PDF'}
@@ -523,10 +512,18 @@ export function ChatInterface({ figure }: { figure: string }) {
         <button
           onClick={() => setIsQuizOpen(true)}
           disabled={messages.length < 3}
-          className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-transform flex items-center justify-center text-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[#d97706] liquid bg-transparent text-[#d97706]"
+          className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-transform flex items-center justify-center text-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed bg-[#d97706] hover:bg-[#b45309] text-white"
           title="Take a quiz about what you learned"
         >
           🧪
+        </button>
+
+        <button
+          onClick={resetJourney}
+          className="w-auto px-4 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-transform flex items-center justify-center text-base font-semibold bg-red-600 hover:bg-red-700 text-white"
+          title="Reset your entire journey (clears all progress, points, and badges)"
+        >
+          Reset Journey
         </button>
       </div>
 
