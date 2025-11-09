@@ -100,7 +100,8 @@ export function ChatInterface({ figure }: { figure: string }) {
 
   // Add speech variations like coughs and laughs
   const addSpeechVariations = (text: string): string => {
-    const sentences = text.split(/([.!?]+)/).filter(s => s.trim())
+    const base = typeof text === 'string' ? text : String(text ?? '')
+    const sentences = base.split(/([.!?]+)/).filter(s => s.trim())
     const variations = [
       { chance: 0.35, sound: '*cough* ' },
       { chance: 0.33, sound: '*chuckles* ' },
@@ -126,7 +127,7 @@ export function ChatInterface({ figure }: { figure: string }) {
     setIsSpeaking(true)
 
     // Prepare text for speech (optionally translate, then add variations)
-    let speechText = text
+    let speechText: string = typeof text === 'string' ? text : String(text ?? '')
     try {
       if (language && language !== 'en') {
         const target = langToBCP47(language)
@@ -137,8 +138,14 @@ export function ChatInterface({ figure }: { figure: string }) {
         })
         if (tr.ok) {
           const data = await tr.json()
-          const translated = Array.isArray(data.translations) ? data.translations[0] : (data.translatedTexts?.[0] ?? '')
-          if (translated) speechText = translated
+          let translated: any = ''
+          if (Array.isArray(data?.translations)) {
+            const first = data.translations[0]
+            translated = (typeof first === 'string') ? first : (first?.text ?? first?.translatedText ?? '')
+          } else if (Array.isArray(data?.translatedTexts)) {
+            translated = data.translatedTexts[0]
+          }
+          if (translated) speechText = String(translated)
         }
       }
     } catch {}
