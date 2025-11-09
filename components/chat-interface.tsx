@@ -24,6 +24,8 @@ export function ChatInterface({ figure }: { figure: string }) {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [sttSupported, setSttSupported] = useState(false)
   const [isQuizOpen, setIsQuizOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [language, setLanguage] = useState<LangCode>('en')
@@ -31,6 +33,7 @@ export function ChatInterface({ figure }: { figure: string }) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const recognitionRef = useRef<any>(null)
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   useEffect(() => { scrollToBottom() }, [messages])
@@ -40,6 +43,13 @@ export function ChatInterface({ figure }: { figure: string }) {
     const load = () => setVoices(window.speechSynthesis.getVoices())
     load()
     window.speechSynthesis.onvoiceschanged = load
+  }, [])
+
+  // Detect Speech-to-Text support (Web Speech API)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const supported = !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+    setSttSupported(supported)
   }, [])
 
   // Resolve figure language if using auto mode
@@ -94,6 +104,40 @@ export function ChatInterface({ figure }: { figure: string }) {
   const stopSpeech = () => {
     window.speechSynthesis.cancel()
     setIsSpeaking(false)
+  }
+
+  // Speech-to-Text: start/stop microphone and fill the input
+  const toggleListening = () => {
+    if (!sttSupported || loading) return
+    if (isListening) {
+      try { recognitionRef.current?.stop() } catch {}
+      setIsListening(false)
+      return
+    }
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SR) return
+    const rec = new SR()
+    rec.lang = langToBCP47(language)
+    rec.interimResults = true
+    rec.maxAlternatives = 1
+    let finalTranscript = ''
+    rec.onresult = (event: any) => {
+      let interim = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i]
+        if (res.isFinal) finalTranscript += res[0].transcript
+        else interim += res[0].transcript
+      }
+      const text = (finalTranscript || interim).trim()
+      if (text) setInput(text)
+    }
+    rec.onend = () => { setIsListening(false); recognitionRef.current = null }
+    rec.onerror = () => { setIsListening(false) }
+    try {
+      rec.start()
+      recognitionRef.current = rec
+      setIsListening(true)
+    } catch {}
   }
 
   // Progress persistence helpers
@@ -169,7 +213,7 @@ export function ChatInterface({ figure }: { figure: string }) {
       if (!resp.ok) throw new Error('Failed to create summary')
       const data = await resp.json()
 
-      const title = `Historica — ${figure} Summary`
+      const title = `Chronos Guru - ${figure} Summary`
       const styles = `
         body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; padding:24px;color:#111}
         h1{font-size:24px;margin:0 0 8px}
@@ -194,7 +238,7 @@ export function ChatInterface({ figure }: { figure: string }) {
       const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>${styles}</style></head>
         <body>
           <h1>${figure}</h1>
-          <div class="muted">Learning summary generated from your Historica conversation.</div>
+          <div class="muted">Learning summary generated from your Chronos Guru conversation.</div>
           <h2>Important Points</h2>
           ${pointsHtml}
           <h2>Timeline</h2>
@@ -290,6 +334,14 @@ export function ChatInterface({ figure }: { figure: string }) {
             disabled={loading}
             className="border-amber-200 dark:border-slate-600"
           />
+          <Button
+            onClick={toggleListening}
+            disabled={loading || !sttSupported}
+            className={`${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600'} text-white`}
+            title={sttSupported ? (isListening ? 'Stop listening' : 'Speak your question') : 'Speech input not supported in this browser'}
+          >
+            {isListening ? 'Stop Mic' : '🎤 Speak'}
+          </Button>
           <Button
             onClick={handleSend}
             disabled={loading || !input.trim()}

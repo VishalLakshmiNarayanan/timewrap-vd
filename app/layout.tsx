@@ -8,7 +8,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Historica - Learn from History",
+  title: "Chronos Guru - Learn from History",
   description: "Chat with historical figures and learn about their era",
   generator: "v0.app",
   icons: {
@@ -39,6 +39,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`font-sans antialiased`}>
         {children}
+        <footer className="text-center text-xs text-amber-700 dark:text-amber-300 py-6 border-t border-amber-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50">
+          Powered by Claude AI
+        </footer>
         <Analytics />
       </body>
     </html>
