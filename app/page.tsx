@@ -51,7 +51,7 @@ export default function Home() {
       <header className="border-b border-amber-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-900 to-orange-700 dark:from-amber-300 dark:to-orange-400 bg-clip-text text-transparent">
-            Chronos Guru
+            Historica
           </h1>
           <p className="text-amber-800 dark:text-amber-200 mt-2">
             Step into history. Learn from any historical figure who shaped our world.
