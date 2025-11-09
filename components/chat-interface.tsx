@@ -35,6 +35,9 @@ export function ChatInterface({ figure }: { figure: string }) {
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const recognitionRef = useRef<any>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [converting, setConverting] = useState(false)
+  const [convertedAudioUrl, setConvertedAudioUrl] = useState<string | null>(null)
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   useEffect(() => { scrollToBottom() }, [messages])
@@ -129,11 +132,16 @@ export function ChatInterface({ figure }: { figure: string }) {
     const textWithVariations = addSpeechVariations(text)
 
     try {
+      // If non-English, prefer browser TTS so locale/voice matches immediately
+      if (language !== 'en') {
+        useBrowserTTS(text)
+        return
+      }
       // Try Murf AI TTS first with gender-based voice selection
       const response = await fetch('/api/elevenlabs-tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: textWithVariations, gender: figureGender })
+        body: JSON.stringify({ text: textWithVariations, gender: figureGender, language })
       })
 
       const data = await response.json()
@@ -172,6 +180,40 @@ export function ChatInterface({ figure }: { figure: string }) {
       console.error('Murf AI TTS error:', error)
       // Fallback to browser TTS
       useBrowserTTS(text)
+    }
+  }
+
+  const uploadAndConvertVoice = async (file: File) => {
+    try {
+      setConverting(true)
+      setConvertedAudioUrl(null)
+      const fd = new FormData()
+      fd.append('file', file, file.name)
+      // Default target voice; align to detected gender when possible
+      const targetVoice = figureGender === 'female' ? 'en-US-natalie' : 'en-US-terrell'
+      fd.append('voice_id', targetVoice)
+
+      const resp = await fetch('/api/voice-convert', { method: 'POST', body: fd })
+      if (!resp.ok) throw new Error('Conversion failed')
+      const data = await resp.json()
+      if (data.audioData) {
+        const byteCharacters = atob(data.audioData)
+        const byteArrays: Uint8Array[] = []
+        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+          const slice = byteCharacters.slice(offset, offset + 512)
+          const byteNumbers = new Array(slice.length)
+          for (let i = 0; i < slice.length; i++) byteNumbers[i] = slice.charCodeAt(i)
+          byteArrays.push(new Uint8Array(byteNumbers))
+        }
+        const blob = new Blob(byteArrays, { type: data.mimeType || 'audio/mpeg' })
+        const url = URL.createObjectURL(blob)
+        setConvertedAudioUrl(url)
+      }
+    } catch (e) {
+      console.error(e)
+      alert('Voice conversion failed. Please try again.')
+    } finally {
+      setConverting(false)
     }
   }
 
@@ -422,6 +464,18 @@ export function ChatInterface({ figure }: { figure: string }) {
 
         {/* Input */}
         <div className="flex gap-3 items-center">
+          {/* Hidden file input for voice conversion */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="audio/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) uploadAndConvertVoice(f)
+              if (fileInputRef.current) fileInputRef.current.value = ''
+            }}
+          />
           <select
             value={language}
             className="border-2 border-[#d4a574] dark:border-slate-600 rounded px-2 py-2 bg-[#fffaf5] dark:bg-slate-800 text-sm text-[#5f2712] dark:text-amber-100 shadow-sm"
@@ -466,6 +520,14 @@ export function ChatInterface({ figure }: { figure: string }) {
             {isListening ? 'Stop Mic' : 'Speak'}
           </Button>
           <Button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading || converting}
+            className="bg-[#d97706] hover:bg-[#b45309] text-white"
+            title="Upload an audio file and convert its voice"
+          >
+            {converting ? 'Converting…' : 'Upload Voice'}
+          </Button>
+          <Button
             onClick={handleSend}
             disabled={loading || !input.trim()}
             className="bg-[#d97706] hover:bg-[#b45309] text-white"
@@ -492,6 +554,17 @@ export function ChatInterface({ figure }: { figure: string }) {
             </Button>
           )}
         </div>
+
+        {convertedAudioUrl && (
+          <div className="mt-3">
+            <Card className="p-3 border-[#d4a574]">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-[#5f2712] dark:text-amber-50">Converted voice preview</span>
+                <audio controls src={convertedAudioUrl} className="flex-1" />
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* Floating actions */}
