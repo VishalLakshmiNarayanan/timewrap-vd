@@ -1,4 +1,5 @@
-// Switched to Anthropic Messages API
+import { generateText } from "ai"
+import { groq } from "@ai-sdk/groq"
 
 export async function POST(request: Request) {
   try {
@@ -26,30 +27,17 @@ export async function POST(request: Request) {
       }
     }
 
-    const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
-    if (!ANTHROPIC_API_KEY) {
-      return Response.json({ translation: String(text) })
-    }
-
-    const prompt = `Translate the following ${codeToName(sourceLanguage)} text to English. Provide ONLY the English translation, no explanations or additional text:\n\n${String(text)}`
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 256,
-        messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
-        temperature: 0.1,
-      }),
+    const { text: out } = await generateText({
+      model: groq("llama-3.3-70b-versatile"),
+      messages: [
+        {
+          role: 'user',
+          content: `Translate the following ${codeToName(sourceLanguage)} text to English. Provide ONLY the English translation, no explanations or additional text:\n\n${String(text)}`,
+        },
+      ],
+      maxTokens: 256,
+      temperature: 0.1,
     })
-    const data = await resp.json()
-    const out = Array.isArray(data?.content)
-      ? data.content.map((c: any) => (c?.text ?? '')).join('')
-      : String(data?.content?.[0]?.text ?? '')
 
     return Response.json({ translation: out.trim() })
   } catch (error) {

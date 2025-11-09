@@ -1,3 +1,14 @@
+import { generateText } from "ai"
+import { groq } from "@ai-sdk/groq"
+
+interface WrongItem {
+  index: number
+  question: string
+  userAnswer: string
+  correctAnswer: string
+  explanation: string
+}
+
 export async function POST(request: Request) {
   try {
     const { figure, score, total, wrong, language } = await request.json()
@@ -36,49 +47,31 @@ export async function POST(request: Request) {
         ? `Write ONLY in ${codeToName(language)}. All your writing must be in ${codeToName(language)}.`
         : `Write ONLY in English unless the context implies otherwise.`
 
-    const wrongBlock = wrong.map((w: any, i: number) => (
+    const wrongBlock = wrong.map((w: WrongItem, i: number) => (
       `${i + 1}) ${w.question}\n- User said: ${w.userAnswer}\n- Correct: ${w.correctAnswer}\n- Context: ${w.explanation}`
     )).join("\n\n")
 
-    const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
-    if (!ANTHROPIC_API_KEY) {
-      return Response.json({ error: 'Anthropic API key not configured' }, { status: 503 })
-    }
-
-    const prompt = `You are ${figure} speaking in first person. Create a concise, friendly quiz reflection.
-Tone: warm, natural, a bit playful; begin with a short acknowledgment like "Oh! It seems a few details about me got a bit tangled"—let me clarify." Use first person throughout.
+    const { text } = await generateText({
+      model: groq("llama-3.3-70b-versatile"),
+      messages: [
+        {
+          role: "user",
+          content: `You are ${figure} speaking in first person. Create a concise, friendly quiz reflection.
+Tone: warm, natural, a bit playful; begin with a short acknowledgment like "Oh! It seems a few details about me got a bit tangledâ€”let me clarify." Use first person throughout.
 Content: Mention the score (${score}/${total}). If there are mistakes, explain each one briefly in your own words.
 Format: plain text only, no markdown, no emojis unless they fit naturally. Keep it under 12 lines.
 ${langInstruction}
 
 WRONG ANSWERS:
-${wrongBlock || 'None'}`
-
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 300,
-        messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
-        temperature: 0.7,
-      }),
+${wrongBlock || 'None'}
+`
+        },
+      ],
+      maxTokens: 300,
+      temperature: 0.7,
     })
-    if (!resp.ok) {
-      const err = await resp.text()
-      console.error('[anthropic reflection] error:', err)
-      return Response.json({ error: 'Failed to generate reflection' }, { status: 500 })
-    }
-    const data = await resp.json()
-    const out = Array.isArray(data?.content)
-      ? data.content.map((c: any) => (c?.text ?? '')).join('').trim()
-      : String(data?.content?.[0]?.text ?? '').trim()
 
-    return Response.json({ message: out })
+    return Response.json({ message: text })
   } catch (error) {
     console.error("[v0] Reflection generation error:", error)
     return Response.json({ error: "Failed to generate reflection" }, { status: 500 })
