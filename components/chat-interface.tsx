@@ -466,36 +466,42 @@ export function ChatInterface({ figure }: { figure: string }) {
         // Wait for first speaker to finish talking before next speaker responds
         await speakText(data.message)
 
-        // Build updated conversation history with first response
-        let conversationHistory = [...messages, { role: "user", content: userMessage }, assistantMessage]
+        // Collect all responses to build context for next speakers
+        const debateResponses: { speaker: string; message: string }[] = [
+          { speaker: respondingFigure, message: data.message }
+        ]
 
         // Have ALL other figures respond to create a debate
         const otherFigures = figures.filter((f: string) => f !== respondingFigure)
 
         for (let i = 0; i < otherFigures.length; i++) {
           const otherFigure = otherFigures[i]
-          const previousSpeaker = i === 0 ? respondingFigure : otherFigures[i - 1]
 
           // Small delay between speakers
           await new Promise(resolve => setTimeout(resolve, 800))
 
           setLoading(true)
 
-          // Inject a system-level instruction for this figure to respond to the previous speaker
-          // This will be sent to the API but won't show in the UI
-          const contextPrompt = `You are in a debate with ${previousSpeaker}. They just shared their perspective. Now it's your turn to respond. You should directly address what ${previousSpeaker} said, either agreeing, disagreeing, adding nuance, or providing a different perspective. Speak naturally as if you're having a conversation with them.`
+          // Build context showing what previous speakers said
+          const previousStatements = debateResponses
+            .map(r => `${r.speaker} said: "${r.message}"`)
+            .join('\n\n')
+
+          // Create a modified user message that includes both the question AND what others said
+          const debateQuestion = `Original question: "${userMessage}"\n\nOther perspectives in this debate:\n${previousStatements}\n\nNow respond to the question, and you may also address or reference what the others said.`
 
           const response2 = await fetch("/api/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               figure: otherFigure,
-              messages: conversationHistory,
+              messages: [
+                ...messages,
+                { role: "user", content: debateQuestion }
+              ],
               language,
               multiFigureMode: true,
               allFigures: figures,
-              respondingTo: previousSpeaker,
-              debateContext: contextPrompt,
             }),
           })
 
@@ -520,8 +526,8 @@ export function ChatInterface({ figure }: { figure: string }) {
             // Wait for this speaker to finish before next speaker
             await speakText(data2.message)
 
-            // Update conversation history for next figure
-            conversationHistory = [...conversationHistory, assistantMessage2]
+            // Add this response to debate context
+            debateResponses.push({ speaker: otherFigure, message: data2.message })
           }
         }
 
