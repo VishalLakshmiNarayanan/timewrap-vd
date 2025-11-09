@@ -284,3 +284,60 @@ button[data-slot="button"] {
   background: linear-gradient(90deg, transparent, #8e755544, transparent);
   margin: 20px 0;
 }
+
+/* Avatar Animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(245, 158, 11, 0.8);
+  }
+}
+
+@keyframes talk {
+  0%, 100% {
+    transform: scaleY(0.8);
+  }
+  50% {
+    transform: scaleY(1.2);
+  }
+}
+
+@keyframes wave-1 {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes wave-2 {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-talk {
+  animation: talk 0.3s ease-in-out infinite;
+}
+
+.animate-wave-1 {
+  animation: wave-1 1.5s ease-out infinite;
+}
+
+.animate-wave-2 {
+  animation: wave-2 1.5s ease-out infinite 0.3s;
+}
