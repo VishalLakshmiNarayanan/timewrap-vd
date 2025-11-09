@@ -271,12 +271,12 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
                           className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm
                           ${
                             selectedAnswers[currentQuestion] === idx
-                              ? "border-purple-500 bg-purple-500 text-white"
-                              : "border-gray-300 dark:border-slate-500"
+                              ? "border-amber-600 bg-amber-600 text-white"
+                              : "border-[#d3c3a7]"
                           }
                         `}
                         >
-                          {selectedAnswers[currentQuestion] === idx && "✓"}
+                          {selectedAnswers[currentQuestion] === idx && "?"}
                         </span>
                         {option}
                       </span>
@@ -291,7 +291,7 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
                   onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                   disabled={currentQuestion === 0}
                   variant="outline"
-                  className="flex-1 border-[#a38d68] text-[#494234]"\n                  ? Previous
+                  className="flex-1 border-[#a38d68] text-[#494234]">`n                  ? Previous
                 </Button>
                 <Button
                   onClick={handleNext}
@@ -392,6 +392,12 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
     </div>
   )
 }
+
+
+
+
+
+
 
 
 
