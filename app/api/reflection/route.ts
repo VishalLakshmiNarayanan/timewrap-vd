@@ -16,11 +16,36 @@ export async function POST(request: Request) {
       return Response.json({ error: "Missing required parameters" }, { status: 400 })
     }
 
+    const codeToName = (code?: string) => {
+      switch (code) {
+        case 'en': return 'English'
+        case 'es': return 'Spanish'
+        case 'fr': return 'French'
+        case 'de': return 'German'
+        case 'it': return 'Italian'
+        case 'pt': return 'Portuguese'
+        case 'ru': return 'Russian'
+        case 'zh': return 'Chinese'
+        case 'ja': return 'Japanese'
+        case 'ko': return 'Korean'
+        case 'ar': return 'Arabic'
+        case 'hi': return 'Hindi'
+        case 'nl': return 'Dutch'
+        case 'pl': return 'Polish'
+        case 'tr': return 'Turkish'
+        case 'sv': return 'Swedish'
+        case 'da': return 'Danish'
+        case 'fi': return 'Finnish'
+        case 'no': return 'Norwegian'
+        default: return 'English'
+      }
+    }
+
     const langInstruction = language === 'auto'
-      ? `Write in the language most associated with ${figure} (their native or historically primary language). If uncertain, use English.`
+      ? `Write ONLY in the language most associated with ${figure} (their native or historically primary language). If uncertain, use English.`
       : language
-        ? `Write in ${language}.`
-        : `Write in English unless the context implies otherwise.`
+        ? `Write ONLY in ${codeToName(language)}. All your writing must be in ${codeToName(language)}.`
+        : `Write ONLY in English unless the context implies otherwise.`
 
     const wrongBlock = wrong.map((w: WrongItem, i: number) => (
       `${i + 1}) ${w.question}\n- User said: ${w.userAnswer}\n- Correct: ${w.correctAnswer}\n- Context: ${w.explanation}`
