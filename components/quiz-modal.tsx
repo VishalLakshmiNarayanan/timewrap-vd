@@ -173,11 +173,13 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl bg-[#fdf2e9] text-[#494234] border-[#a38d68] shadow-xl rounded-xl max-h-[90vh] overflow-y-auto">
+      <Card className="w-full max-w-2xl bg-white dark:bg-slate-800 border-purple-200 dark:border-purple-700 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-[#fdf2e9]/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur p-6 border-b border-[#5f2712] flex justify-between items-center">
+        <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-6 flex justify-between items-center sticky top-0">
           <h2 className="text-2xl font-bold">Historical Genius Quiz</h2>
-          <button onClick={onClose} className="text-xl font-bold hover:opacity-80 transition" aria-label="Close">Close</button>
+          <button onClick={onClose} className="text-2xl font-bold hover:opacity-80 transition" aria-label="Close">
+            ✕
+          </button>
         </div>
 
         <div className="p-8">
@@ -191,8 +193,8 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
                 </p>
               </div>
 
-              <div className="bg-[#fff7ed] p-6 rounded-lg border border-[#a38d68]/50">
-                <p className="text-sm font-semibold text-[#5f2712] mb-3">What you'll earn:</p>
+              <div className="bg-purple-50 dark:bg-slate-700 p-6 rounded-lg">
+                <p className="text-sm font-semibold text-purple-900 dark:text-purple-300 mb-3">What you'll earn:</p>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-2xl">📚</p>
@@ -212,7 +214,7 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
               <Button
                 onClick={generateQuiz}
                 disabled={loading}
-                className="w-full liquid py-6 text-lg font-semibold"
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white py-6 text-lg font-semibold"
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
@@ -231,16 +233,16 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
               {/* Progress Bar */}
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-semibold">
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                     Question {currentQuestion + 1} of {questions.length}
                   </span>
-                  <span className="text-sm font-semibold text-[#a16207]">
+                  <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">
                     {selectedAnswers.filter((a) => a !== null).length}/{questions.length} answered
                   </span>
                 </div>
-                <div className="w-full bg-[#e7d5b8] rounded-full h-2">
+                <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2">
                   <div
-                    className="bg-amber-600 h-2 rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }}
                   />
                 </div>
@@ -261,8 +263,8 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
                       className={`w-full p-4 rounded-lg border-2 transition-all text-left font-medium
                         ${
                           selectedAnswers[currentQuestion] === idx
-                            ? "border-amber-600 bg-[#fff7ed] text-[#5f2712]"
-                            : "border-[#e4d5bb] hover:border-amber-400 text-[#494234]"
+                            ? "border-purple-500 bg-purple-50 dark:bg-purple-900 dark:border-purple-400 text-purple-900 dark:text-purple-100"
+                            : "border-gray-200 dark:border-slate-600 hover:border-purple-300 text-gray-700 dark:text-gray-300"
                         }
                       `}
                     >
@@ -291,14 +293,16 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
                   onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                   disabled={currentQuestion === 0}
                   variant="outline"
-                  className="flex-1 border-[#a38d68] text-[#494234]"\n                  ? Previous
+                  className="flex-1"
+                >
+                  ← Previous
                 </Button>
                 <Button
                   onClick={handleNext}
                   disabled={selectedAnswers[currentQuestion] === null}
-                  className="flex-1 liquid"
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                 >
-                  {currentQuestion === questions.length - 1 ? "Finish" : "Next ?"}
+                  {currentQuestion === questions.length - 1 ? "Finish" : "Next →"}
                 </Button>
               </div>
             </div>
@@ -308,7 +312,7 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
             <div className="text-center space-y-6">
               {/* Score Circle */}
               <div className="flex justify-center">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                   <div className="text-center">
                     <p className="text-5xl font-bold text-white">{score}</p>
                     <p className="text-white text-sm font-semibold">/5</p>
@@ -345,8 +349,8 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
               )}
 
               {/* Answer Review */}
-              <div className="bg-[#fff7ed] p-6 rounded-lg text-left max-h-64 overflow-y-auto border border-[#a38d68]/50">
-                <p className="font-semibold text-[#5f2712] mb-4">Answer Review:</p>
+              <div className="bg-gray-50 dark:bg-slate-700 p-6 rounded-lg text-left max-h-64 overflow-y-auto">
+                <p className="font-semibold text-gray-900 dark:text-white mb-4">Answer Review:</p>
                 <div className="space-y-3">
                   {questions.map((q, idx) => (
                     <div key={idx} className="text-sm">
@@ -377,11 +381,11 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
               <div className="flex gap-3">
                 <Button
                   onClick={resetQuiz}
-                  className="flex-1 liquid"
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                 >
                   Try Another Quiz
                 </Button>
-                <Button onClick={onClose} variant="outline" className="flex-1 bg-transparent border-[#a38d68] text-[#494234]">
+                <Button onClick={onClose} variant="outline" className="flex-1 bg-transparent">
                   Close
                 </Button>
               </div>
@@ -392,11 +396,3 @@ export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: Qui
     </div>
   )
 }
-
-
-
-
-
-
-
-
