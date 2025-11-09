@@ -313,8 +313,8 @@ export function ChatInterface({ figure }: { figure: string }) {
                   max-w-md px-4 py-3 rounded-lg group
                   ${
                     msg.role === "user"
-                      ? "bg-amber-600 text-white"
-                      : "bg-amber-100 dark:bg-slate-700 text-amber-900 dark:text-amber-50"
+                      ? "bg-[#d97706] text-white shadow-md"
+                      : "bg-[#f5e6d3] dark:bg-slate-700 text-[#5f2712] dark:text-amber-50 shadow-sm border border-[#d4a574]"
                   }
                 `}
               >
@@ -322,7 +322,7 @@ export function ChatInterface({ figure }: { figure: string }) {
                 {msg.role === "assistant" && (
                   <button
                     onClick={() => speakText(msg.content)}
-                    className="mt-2 text-xs opacity-60 hover:opacity-100 transition-opacity"
+                    className="mt-2 text-xs opacity-70 hover:opacity-100 transition-opacity text-[#8e7555] hover:text-[#5f2712]"
                     title="Play audio"
                   >
                     🔊 Read aloud
@@ -333,9 +333,9 @@ export function ChatInterface({ figure }: { figure: string }) {
           ))}
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-amber-100 dark:bg-slate-700 px-4 py-3 rounded-lg flex gap-2">
+              <div className="bg-[#f5e6d3] dark:bg-slate-700 px-4 py-3 rounded-lg flex gap-2 border border-[#d4a574] shadow-sm">
                 <Spinner className="w-4 h-4" />
-                <span className="text-sm text-amber-900 dark:text-amber-50">{figure} is thinking...</span>
+                <span className="text-sm text-[#5f2712] dark:text-amber-50">{figure} is thinking...</span>
               </div>
             </div>
           )}
@@ -346,7 +346,7 @@ export function ChatInterface({ figure }: { figure: string }) {
         <div className="flex gap-3 items-center">
           <select
             value={language}
-            className="border border-amber-200 dark:border-slate-600 rounded px-2 py-2 bg-white dark:bg-slate-800 text-sm text-amber-900 dark:text-amber-100"
+            className="border-2 border-[#d4a574] dark:border-slate-600 rounded px-2 py-2 bg-[#fffaf5] dark:bg-slate-800 text-sm text-[#5f2712] dark:text-amber-100 shadow-sm"
             onChange={(e) => setLanguage(e.target.value as LangCode)}
             title="Language"
           >
@@ -360,7 +360,7 @@ export function ChatInterface({ figure }: { figure: string }) {
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
             placeholder={`Ask ${figure} about their era...`}
             disabled={loading}
-            className="border-amber-200 dark:border-slate-600"
+            className="border-2 border-[#d4a574] dark:border-slate-600 bg-[#fffaf5] text-[#5f2712] placeholder:text-[#a38d68] shadow-sm"
           />
           <Button
             onClick={toggleListening}
@@ -386,7 +386,7 @@ export function ChatInterface({ figure }: { figure: string }) {
             }}
             disabled={loading}
             variant="secondary"
-            className="bg-slate-200 hover:bg-slate-300 text-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white"
+            className="bg-[#f5e6d3] hover:bg-[#e8d4bb] text-[#5f2712] border-2 border-[#d4a574] dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white shadow-sm"
             title="Clear current chat"
           >
             Clear
@@ -403,7 +403,7 @@ export function ChatInterface({ figure }: { figure: string }) {
       <button
         onClick={() => setIsQuizOpen(true)}
         disabled={messages.length < 3}
-        className="fixed bottom-8 right-8 w-14 h-14 rounded-full text-white shadow-lg hover:shadow-xl hover:scale-110 transition-transform flex items-center justify-center text-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed z-40 border-2 border-amber-600 liquid bg-transparent"
+        className="fixed bottom-8 right-8 w-14 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-transform flex items-center justify-center text-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed z-40 border-2 border-[#d97706] liquid bg-transparent text-[#d97706]"
         title="Take a quiz about what you learned"
       >
         🧪
@@ -412,7 +412,7 @@ export function ChatInterface({ figure }: { figure: string }) {
       <button
         onClick={handleExportPdf}
         disabled={exporting}
-        className="fixed bottom-8 left-8 w-auto px-4 h-14 rounded-full text-white shadow-lg hover:shadow-xl hover:scale-105 transition-transform flex items-center justify-center text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed z-40 border-2 border-amber-600 liquid bg-transparent"
+        className="fixed bottom-8 left-8 w-auto px-4 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-transform flex items-center justify-center text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed z-40 border-2 border-[#d97706] liquid bg-transparent text-[#d97706]"
         title="Save important points and timeline as PDF"
       >
         {exporting ? 'Preparing…' : 'Save Summary PDF'}
