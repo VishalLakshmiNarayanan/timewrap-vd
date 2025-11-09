@@ -38,14 +38,25 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        <div className="min-h-screen w-full relative">
+        <div className="min-h-screen w-full relative bg-[#fff7ed]">
           <div
             className="absolute inset-0 z-0"
-            style={{ background: "radial-gradient(ellipse at center, #3d2914 0%, #2a1810 30%, #1a0f0a 60%, #0d0806 100%)" }}
+            style={{
+              backgroundImage: `linear-gradient(180deg,
+                rgba(255,247,237,1) 0%,
+                rgba(255,237,213,0.8) 25%,
+                rgba(254,215,170,0.6) 50%,
+                rgba(251,146,60,0.4) 75%,
+                rgba(249,115,22,0.3) 100%
+              ),
+              radial-gradient(circle at 20% 80%, rgba(255,255,255,0.6) 0%, transparent 40%),
+              radial-gradient(circle at 80% 20%, rgba(254,215,170,0.5) 0%, transparent 50%),
+              radial-gradient(circle at 60% 60%, rgba(252,165,165,0.3) 0%, transparent 45%)`,
+            }}
           />
           <div className="relative z-10">
             {children}
-            <footer className="text-center text-xs text-amber-300 py-6 border-t border-amber-800/40 bg-black/10">
+            <footer className="text-center text-xs text-amber-800 py-6 border-t border-amber-200 bg-transparent">
               Powered by Claude AI
             </footer>
             <Analytics />

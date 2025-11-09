@@ -61,7 +61,7 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="max-w-2xl mx-auto px-6 py-16 min-h-[calc(100vh-120px)]">
-        <Card className="w-full p-8 mb-8 bg-white dark:bg-slate-800 border-amber-200 dark:border-slate-700">
+        <Card className="w-full p-8 mb-8 bg-white dark:bg-slate-800 border-amber-200 dark:border-slate-700 holo-card">
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-semibold text-amber-900 dark:text-amber-100 mb-2">
@@ -116,7 +116,7 @@ export default function Home() {
         </Card>
 
         {/* Engagement Section */}
-        <Card className="w-full p-8 bg-white/90 dark:bg-slate-800/80 border-amber-200 dark:border-slate-700">
+        <Card className="w-full p-8 bg-white/90 dark:bg-slate-800/80 border-amber-200 dark:border-slate-700 holo-card">
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-semibold text-amber-900 dark:text-amber-100 mb-2">Your Journey</h2>

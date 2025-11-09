@@ -243,7 +243,7 @@ export function ChatInterface({ figure }: { figure: string }) {
           ${pointsHtml}
           <h2>Timeline</h2>
           ${timelineHtml}
-          <div class="footer">Saved from Historica • ${new Date().toLocaleString()}</div>
+          <div class="footer">Saved from Chronos Guru - ${new Date().toLocaleString()}</div>
           <script>window.onload = () => { window.print(); };</script>
         </body></html>`
 
@@ -329,15 +329,15 @@ export function ChatInterface({ figure }: { figure: string }) {
           <Button
             onClick={toggleListening}
             disabled={loading || !sttSupported}
-            className={`${isListening ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600'} text-white`}
+            className={`liquid ${isListening ? 'bg-red-600 hover:bg-red-700' : ''}`}
             title={sttSupported ? (isListening ? 'Stop listening' : 'Speak your question') : 'Speech input not supported in this browser'}
           >
-            {isListening ? 'Stop Mic' : '🎤 Speak'}
+            {isListening ? 'Stop Mic' : 'Speak'}
           </Button>
           <Button
             onClick={handleSend}
             disabled={loading || !input.trim()}
-            className="bg-amber-600 hover:bg-amber-700 text-white"
+            className="liquid"
           >
             Send
           </Button>
@@ -367,7 +367,7 @@ export function ChatInterface({ figure }: { figure: string }) {
       <button
         onClick={() => setIsQuizOpen(true)}
         disabled={messages.length < 3}
-        className="fixed bottom-8 right-8 w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl hover:scale-110 transition-transform flex items-center justify-center text-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed z-40"
+        className="fixed bottom-8 right-8 w-14 h-14 rounded-full text-white shadow-lg hover:shadow-xl hover:scale-110 transition-transform flex items-center justify-center text-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed z-40 border-2 border-amber-600 liquid bg-transparent"
         title="Take a quiz about what you learned"
       >
         🧪
@@ -376,7 +376,7 @@ export function ChatInterface({ figure }: { figure: string }) {
       <button
         onClick={handleExportPdf}
         disabled={exporting}
-        className="fixed bottom-8 left-8 w-auto px-4 h-14 rounded-full bg-gradient-to-br from-amber-600 to-orange-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-transform flex items-center justify-center text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed z-40"
+        className="fixed bottom-8 left-8 w-auto px-4 h-14 rounded-full text-white shadow-lg hover:shadow-xl hover:scale-105 transition-transform flex items-center justify-center text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed z-40 border-2 border-amber-600 liquid bg-transparent"
         title="Save important points and timeline as PDF"
       >
         {exporting ? 'Preparing…' : 'Save Summary PDF'}
@@ -429,3 +429,8 @@ export function ChatInterface({ figure }: { figure: string }) {
     </>
   )
 }
+
+
+
+
+
