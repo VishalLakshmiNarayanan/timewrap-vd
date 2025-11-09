@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import url('https://fonts.googleapis.com/css2?family=UnifrakturCook:wght@700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -121,7 +122,14 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'UnifrakturCook', cursive !important;
   }
+  h1 { font-size: 24px; font-style: normal; font-variant: normal; font-weight: 700; line-height: 26.4px; }
+  h2 { font-size: 18px; font-weight: 700; line-height: 22px; }
+  h3 { font-size: 14px; font-style: normal; font-variant: normal; font-weight: 700; line-height: 15.4px; }
+  p  { font-size: 14px; font-style: normal; font-variant: normal; font-weight: 400; line-height: 20px; }
+  blockquote { font-size: 21px; font-style: normal; font-variant: normal; font-weight: 400; line-height: 30px; }
+  pre { font-size: 13px; font-style: normal; font-variant: normal; font-weight: 400; line-height: 18.5714px; }
 }
 
 /* Theme utilities: Peachy Sunrise Glow */
@@ -179,7 +187,7 @@
     1000px,
     400px 260px;
   animation: para 50s infinite linear;
-  opacity: 0.12; /* make it less visible */
+  opacity: 0.25; /* make it less visible */
   filter: blur(3px) saturate(0.9);
   mix-blend-mode: multiply;
   pointer-events: none;
@@ -219,4 +227,42 @@
 .holo-card:hover::before {
   opacity: 1;
   transform: rotate(-45deg) translateY(100%);
+}
+
+/* Scroll frame container for chat UI */
+.scroll-wrap {
+  position: relative;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 920px;
+  min-height: 70vh;
+  padding: 56px 48px; /* content padding inside scroll */
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background-color: transparent; /* allow theme to show through holes */
+  background-image:
+    url('/scroll.png'); /* place your scroll image at public/scroll.png */
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: contain;
+}
+
+/* Fallback parchment look if scroll image missing */
+.scroll-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 6% 8%;
+  border-radius: 8px;
+  background:
+    radial-gradient(ellipse at center, rgba(0,0,0,0.18), transparent 60%) border-box,
+    linear-gradient(180deg, rgba(250, 224, 178, 0.95), rgba(233, 190, 126, 0.92)) padding-box;
+  box-shadow: inset 0 0 40px rgba(120, 53, 15, 0.35), 0 10px 30px rgba(120, 53, 15, 0.25);
+  pointer-events: none;
+}
+
+.scroll-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
 }
