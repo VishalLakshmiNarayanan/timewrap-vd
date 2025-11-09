@@ -250,3 +250,37 @@ button[data-slot="button"] {
   inset: 12% 10%; /* confine content to parchment area */
   overflow: hidden auto;
 }
+
+/* Ancient theme container (inspired by provided CSS) */
+.ancient-wrap {
+  position: relative;
+  margin-inline: auto;
+  width: min(92vw, 980px);
+  background:
+    radial-gradient(ellipse at top, rgba(255,255,255,0.6), transparent 60%),
+    linear-gradient(180deg, #fdf2e9 0%, #f7e0b2 100%);
+  border: 5px solid #a38d68;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(98,38,14,0.15), inset 0 0 40px rgba(120,53,15,0.18);
+  color: #8e7555; /* body text color */
+  padding: 28px 28px 32px;
+}
+
+.ancient-wrap a { color: #770726; text-decoration: none; }
+.ancient-wrap a:hover { color: #666000; text-decoration: underline; }
+.ancient-wrap h1, .ancient-wrap h2, .ancient-wrap h3,
+.ancient-wrap h4, .ancient-wrap h5, .ancient-wrap h6 {
+  color: #62260e;
+}
+
+.ancient-header {
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #5f2712;
+}
+
+.ancient-hr {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #8e755544, transparent);
+  margin: 20px 0;
+}
