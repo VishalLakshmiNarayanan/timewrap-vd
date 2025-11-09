@@ -32,8 +32,11 @@ export function ChatInterface({ figure }: { figure: string }) {
   const [autoLangCode, setAutoLangCode] = useState<string>('en-US')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [profileUrl, setProfileUrl] = useState<string | null>(null)
+  const [realName, setRealName] = useState<string>(figure)
+  const [figureGender, setFigureGender] = useState<'male' | 'female'>('male')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   const recognitionRef = useRef<any>(null)
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -65,7 +68,10 @@ export function ChatInterface({ figure }: { figure: string }) {
         })
         if (r.ok) {
           const data = await r.json()
-          if (!canceled) setProfileUrl(data?.url || null)
+          if (!canceled) {
+            setProfileUrl(data?.url || null)
+            setRealName(data?.name || figure)
+          }
         }
       } catch {}
     }
@@ -90,6 +96,24 @@ export function ChatInterface({ figure }: { figure: string }) {
     if (language === 'auto') resolve()
   }, [language, figure])
 
+  // Detect figure gender for voice selection
+  useEffect(() => {
+    const detectGender = async () => {
+      try {
+        const r = await fetch('/api/figure-gender', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ figure })
+        })
+        if (r.ok) {
+          const data = await r.json()
+          setFigureGender(data?.gender || 'male')
+        }
+      } catch {}
+    }
+    if (figure) detectGender()
+  }, [figure])
+
   const langToBCP47 = (lang: LangCode): string => {
     switch (lang) {
       case 'en': return 'en-US'
@@ -106,7 +130,59 @@ export function ChatInterface({ figure }: { figure: string }) {
     }
   }
 
-  const speakText = (text: string) => {
+  const speakText = async (text: string) => {
+    // Stop any current audio
+    stopSpeech()
+    setIsSpeaking(true)
+
+    try {
+      // Try Murf AI TTS first with gender-based voice selection
+      const response = await fetch('/api/elevenlabs-tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, gender: figureGender })
+      })
+
+      const data = await response.json()
+
+      if (data.fallbackToBrowser) {
+        // Fallback to browser TTS if Murf fails or is not configured
+        useBrowserTTS(text)
+        return
+      }
+
+      if (data.audioData) {
+        // Convert base64 to blob and play
+        const audioBlob = base64ToBlob(data.audioData, data.mimeType || 'audio/mpeg')
+        const audioUrl = URL.createObjectURL(audioBlob)
+
+        const audio = new Audio(audioUrl)
+        audioRef.current = audio
+
+        audio.onended = () => {
+          setIsSpeaking(false)
+          URL.revokeObjectURL(audioUrl)
+        }
+
+        audio.onerror = () => {
+          setIsSpeaking(false)
+          URL.revokeObjectURL(audioUrl)
+          // Fallback to browser TTS on error
+          useBrowserTTS(text)
+        }
+
+        await audio.play()
+      } else {
+        useBrowserTTS(text)
+      }
+    } catch (error) {
+      console.error('Murf AI TTS error:', error)
+      // Fallback to browser TTS
+      useBrowserTTS(text)
+    }
+  }
+
+  const useBrowserTTS = (text: string) => {
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = 0.9
@@ -122,7 +198,31 @@ export function ChatInterface({ figure }: { figure: string }) {
     window.speechSynthesis.speak(utterance)
   }
 
+  const base64ToBlob = (base64: string, mimeType: string): Blob => {
+    const byteCharacters = atob(base64)
+    const byteArrays = []
+
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512)
+      const byteNumbers = new Array(slice.length)
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i)
+      }
+      const byteArray = new Uint8Array(byteNumbers)
+      byteArrays.push(byteArray)
+    }
+
+    return new Blob(byteArrays, { type: mimeType })
+  }
+
   const stopSpeech = () => {
+    // Stop audio element
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+      audioRef.current = null
+    }
+    // Stop browser TTS
     window.speechSynthesis.cancel()
     setIsSpeaking(false)
   }
@@ -291,23 +391,33 @@ export function ChatInterface({ figure }: { figure: string }) {
       <div className="max-w-4xl mx-auto px-6 py-8 flex flex-col min-h-[60vh]">
         {/* Figure header */}
         <div className="mb-4 flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#a38d68] bg-[#fff7ed] flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#a38d68] bg-[#fff7ed] flex items-center justify-center shadow-md">
             {profileUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={profileUrl} alt={`${figure} portrait`} className="w-full h-full object-cover" />
+              <img src={profileUrl} alt={`${realName} portrait`} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-[#a16207] text-xl">🗝️</span>
+              <span className="text-[#a16207] text-2xl">🗝️</span>
             )}
           </div>
           <div className="leading-tight">
-            <div className="text-lg font-bold text-[#5f2712]">{figure}</div>
-            <div className="text-xs text-[#8e7555]">Historical Figure</div>
+            <div className="text-xl font-bold text-[#5f2712]">{realName}</div>
+            <div className="text-sm text-[#8e7555]">Historical Figure</div>
           </div>
         </div>
         {/* Messages */}
         <div className="flex-1 overflow-y-auto mb-6 space-y-4">
           {messages.map((msg, idx) => (
-            <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start items-start gap-2"}`}>
+              {msg.role === "assistant" && (
+                <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-[#a38d68] bg-[#fff7ed] flex items-center justify-center flex-shrink-0 shadow-sm">
+                  {profileUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={profileUrl} alt={`${realName}`} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-[#a16207] text-sm">🗝️</span>
+                  )}
+                </div>
+              )}
               <Card
                 className={`
                   max-w-md px-4 py-3 rounded-lg group
@@ -400,23 +510,25 @@ export function ChatInterface({ figure }: { figure: string }) {
       </div>
 
       {/* Floating actions */}
-      <button
-        onClick={() => setIsQuizOpen(true)}
-        disabled={messages.length < 3}
-        className="fixed bottom-8 right-8 w-14 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-transform flex items-center justify-center text-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed z-40 border-2 border-[#d97706] liquid bg-transparent text-[#d97706]"
-        title="Take a quiz about what you learned"
-      >
-        🧪
-      </button>
+      <div className="fixed bottom-8 left-8 flex gap-3 z-40">
+        <button
+          onClick={handleExportPdf}
+          disabled={exporting}
+          className="w-auto px-4 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-transform flex items-center justify-center text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[#d97706] liquid bg-transparent text-[#d97706]"
+          title="Save important points and timeline as PDF"
+        >
+          {exporting ? 'Preparing…' : 'Save Summary PDF'}
+        </button>
 
-      <button
-        onClick={handleExportPdf}
-        disabled={exporting}
-        className="fixed bottom-8 left-8 w-auto px-4 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-transform flex items-center justify-center text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed z-40 border-2 border-[#d97706] liquid bg-transparent text-[#d97706]"
-        title="Save important points and timeline as PDF"
-      >
-        {exporting ? 'Preparing…' : 'Save Summary PDF'}
-      </button>
+        <button
+          onClick={() => setIsQuizOpen(true)}
+          disabled={messages.length < 3}
+          className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-transform flex items-center justify-center text-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[#d97706] liquid bg-transparent text-[#d97706]"
+          title="Take a quiz about what you learned"
+        >
+          🧪
+        </button>
+      </div>
 
       {/* Quiz modal */}
       <QuizModal
