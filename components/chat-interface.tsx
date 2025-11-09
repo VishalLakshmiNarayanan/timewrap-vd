@@ -6,11 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { QuizModal } from "./quiz-modal"
+import { AvatarModeModal } from "./avatar-mode-modal"
+import { ImageCartoonizer } from "./image-cartoonizer"
+import { TalkingAvatar } from "./talking-avatar"
+import { AddMemberModal } from "./add-member-modal"
 
 interface Message {
   role: "user" | "assistant"
   content: string
   englishTranslation?: string
+  speaker?: string // Name of the historical figure speaking
 }
 
 type LangCode = 'en' | 'hi' | 'es' | 'fr' | 'de' | 'it' | 'ar' | 'zh' | 'ja' | 'pt' | 'ru' | 'ko' | 'nl' | 'pl' | 'tr' | 'sv' | 'da' | 'fi' | 'no'
@@ -20,6 +25,7 @@ export function ChatInterface({ figure }: { figure: string }) {
     {
       role: "assistant",
       content: `Greetings! I am ${figure}. I am pleased to share knowledge about my era and expertise. What would you like to know?`,
+      speaker: figure,
     },
   ])
   const [input, setInput] = useState("")
@@ -33,6 +39,19 @@ export function ChatInterface({ figure }: { figure: string }) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [figureGender, setFigureGender] = useState<'male' | 'female'>('male')
   const [translatingIndex, setTranslatingIndex] = useState<number | null>(null)
+
+  // Avatar mode states
+  const [showAvatarModeModal, setShowAvatarModeModal] = useState(true)
+  const [showImageUploader, setShowImageUploader] = useState(false)
+  const [avatarEnabled, setAvatarEnabled] = useState(false)
+  const [avatarImage, setAvatarImage] = useState<string | null>(null)
+
+  // Multi-figure conversation states
+  const [figures, setFigures] = useState<string[]>([figure])
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false)
+  const [figureAvatars, setFigureAvatars] = useState<{ [key: string]: string }>({})
+  const [currentSpeaker, setCurrentSpeaker] = useState<string>(figure)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -74,6 +93,102 @@ export function ChatInterface({ figure }: { figure: string }) {
     }
     if (figure) detectGender()
   }, [figure])
+
+  // Load avatar settings from localStorage on mount
+  useEffect(() => {
+    const savedAvatar = localStorage.getItem(`avatar-${figure}`)
+    if (savedAvatar) {
+      try {
+        const parsed = JSON.parse(savedAvatar)
+        setAvatarEnabled(parsed.enabled || false)
+        setAvatarImage(parsed.image || null)
+        setShowAvatarModeModal(false) // Don't show modal if already configured
+      } catch (e) {
+        // Invalid data, show modal
+      }
+    }
+  }, [figure])
+
+  // Avatar mode handlers
+  const handleAvatarModeSelect = (useAvatar: boolean) => {
+    setShowAvatarModeModal(false)
+    if (useAvatar) {
+      setShowImageUploader(true)
+    } else {
+      setAvatarEnabled(false)
+      localStorage.setItem(`avatar-${figure}`, JSON.stringify({ enabled: false, image: null }))
+    }
+  }
+
+  const handleImageProcessed = (imageDataUrl: string) => {
+    setAvatarImage(imageDataUrl)
+    setAvatarEnabled(true)
+    setShowImageUploader(false)
+    localStorage.setItem(`avatar-${figure}`, JSON.stringify({ enabled: true, image: imageDataUrl }))
+    // Store in figureAvatars map
+    setFigureAvatars(prev => ({ ...prev, [figure]: imageDataUrl }))
+  }
+
+  const handleImageUploadSkip = () => {
+    setShowImageUploader(false)
+    setAvatarEnabled(false)
+    localStorage.setItem(`avatar-${figure}`, JSON.stringify({ enabled: false, image: null }))
+  }
+
+  const handleRemoveAvatar = () => {
+    setAvatarEnabled(false)
+    setAvatarImage(null)
+    localStorage.removeItem(`avatar-${figure}`)
+    setFigureAvatars(prev => {
+      const updated = { ...prev }
+      delete updated[figure]
+      return updated
+    })
+  }
+
+  const handleReplaceAvatar = () => {
+    setShowImageUploader(true)
+  }
+
+  // Add new historical figure to conversation
+  const handleAddMember = (newFigure: string) => {
+    setFigures((prev: string[]) => [...prev, newFigure])
+    setShowAddMemberModal(false)
+
+    // Add introduction message from new figure
+    const introMessage: Message = {
+      role: "assistant",
+      content: `Greetings! I am ${newFigure}. I have joined this fascinating discussion. ${figure}, it is an honor to converse with you!`,
+      speaker: newFigure,
+    }
+
+    setMessages((prev: Message[]) => [...prev, introMessage])
+
+    // System message about crossover mode
+    const systemMessage: Message = {
+      role: "assistant",
+      content: `🌟 Cross-Era Debate Mode Activated! ${figure} and ${newFigure} are now in conversation. They can debate, agree, or discuss with each other based on your prompts!`,
+      speaker: "System",
+    }
+
+    setMessages((prev: Message[]) => [...prev, systemMessage])
+  }
+
+  // Get color for each figure
+  const getSpeakerColor = (speaker?: string) => {
+    if (!speaker || speaker === "System") return "bg-gradient-to-r from-purple-500 to-pink-600"
+
+    const colors = [
+      "bg-gradient-to-r from-amber-500 to-orange-600",
+      "bg-gradient-to-r from-blue-500 to-cyan-600",
+      "bg-gradient-to-r from-green-500 to-emerald-600",
+      "bg-gradient-to-r from-pink-500 to-rose-600",
+      "bg-gradient-to-r from-indigo-500 to-purple-600",
+    ]
+
+    const index = figures.indexOf(speaker) % colors.length
+    return colors[index]
+  }
 
   const langToBCP47 = (lang: LangCode): string => {
     switch (lang) {
@@ -370,28 +485,101 @@ export function ChatInterface({ figure }: { figure: string }) {
 
     const userMessage = input.trim()
     setInput("")
-    setMessages((prev) => [...prev, { role: "user", content: userMessage }])
+    setMessages((prev: Message[]) => [...prev, { role: "user", content: userMessage }])
     setLoading(true)
 
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          figure,
-          messages: [...messages, { role: "user", content: userMessage }],
-          language,
-        }),
-      })
-      if (!response.ok) throw new Error("Failed to get response")
-      const data = await response.json()
-      setMessages((prev) => [...prev, { role: "assistant", content: data.message }])
-      speakText(data.message)
+      // Multi-figure mode: get responses from all figures
+      if (figures.length > 1) {
+        // Randomly select which figure responds (or they can take turns)
+        const respondingFigure = figures[Math.floor(Math.random() * figures.length)]
+        setCurrentSpeaker(respondingFigure)
+
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            figure: respondingFigure,
+            messages: [...messages, { role: "user", content: userMessage }],
+            language,
+            multiFigureMode: true,
+            allFigures: figures,
+          }),
+        })
+        if (!response.ok) throw new Error("Failed to get response")
+        const data = await response.json()
+
+        const assistantMessage: Message = {
+          role: "assistant",
+          content: data.message,
+          speaker: respondingFigure,
+        }
+
+        setMessages((prev: Message[]) => [...prev, assistantMessage])
+        speakText(data.message)
+
+        // Optionally, have another figure respond sometimes
+        if (Math.random() > 0.5 && figures.length > 1) {
+          const otherFigure = figures.find(f => f !== respondingFigure) || figures[0]
+
+          setTimeout(async () => {
+            setLoading(true)
+            setCurrentSpeaker(otherFigure)
+
+            const response2 = await fetch("/api/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                figure: otherFigure,
+                messages: [...messages, { role: "user", content: userMessage }, assistantMessage],
+                language,
+                multiFigureMode: true,
+                allFigures: figures,
+                respondingTo: respondingFigure,
+              }),
+            })
+
+            if (response2.ok) {
+              const data2 = await response2.json()
+              const assistantMessage2: Message = {
+                role: "assistant",
+                content: data2.message,
+                speaker: otherFigure,
+              }
+              setMessages((prev: Message[]) => [...prev, assistantMessage2])
+              speakText(data2.message)
+            }
+            setLoading(false)
+          }, 1500) // Wait a bit for more natural conversation flow
+        }
+      } else {
+        // Single figure mode (original behavior)
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            figure,
+            messages: [...messages, { role: "user", content: userMessage }],
+            language,
+          }),
+        })
+        if (!response.ok) throw new Error("Failed to get response")
+        const data = await response.json()
+
+        const assistantMessage: Message = {
+          role: "assistant",
+          content: data.message,
+          speaker: figure,
+        }
+
+        setMessages((prev: Message[]) => [...prev, assistantMessage])
+        speakText(data.message)
+      }
     } catch (error) {
       console.error("Error:", error)
-      setMessages((prev) => [
+      setMessages((prev: Message[]) => [
         ...prev,
-        { role: "assistant", content: "I apologize, but I cannot continue this conversation at the moment." },
+        { role: "assistant", content: "I apologize, but I cannot continue this conversation at the moment.", speaker: figure },
       ])
     } finally {
       setLoading(false)
@@ -464,7 +652,56 @@ export function ChatInterface({ figure }: { figure: string }) {
 
   return (
     <>
+      {/* Avatar Mode Selection Modal */}
+      {showAvatarModeModal && (
+        <AvatarModeModal
+          figureName={figure}
+          onSelect={handleAvatarModeSelect}
+        />
+      )}
+
+      {/* Image Upload and Cartoonizer */}
+      {showImageUploader && (
+        <ImageCartoonizer
+          onImageProcessed={handleImageProcessed}
+          onSkip={handleImageUploadSkip}
+        />
+      )}
+
+      {/* Add Member Modal */}
+      {showAddMemberModal && (
+        <AddMemberModal
+          currentFigures={figures}
+          onAdd={handleAddMember}
+          onClose={() => setShowAddMemberModal(false)}
+        />
+      )}
+
       <div className="max-w-4xl mx-auto px-6 py-8 flex flex-col min-h-[60vh]">
+        {/* Talking Avatars */}
+        {avatarEnabled && (
+          <div className="flex justify-center gap-4 mb-6 flex-wrap">
+            {figures.map((fig, idx) => (
+              <div key={idx}>
+                {figureAvatars[fig] ? (
+                  <TalkingAvatar
+                    imageUrl={figureAvatars[fig]}
+                    isSpeaking={isSpeaking && currentSpeaker === fig}
+                    isThinking={loading && currentSpeaker === fig}
+                    onRemove={fig === figure ? handleRemoveAvatar : undefined}
+                    onReplace={fig === figure ? handleReplaceAvatar : undefined}
+                  />
+                ) : (
+                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center border-4 border-gray-500 shadow-lg">
+                    <span className="text-4xl">{fig.charAt(0)}</span>
+                  </div>
+                )}
+                <p className="text-center text-xs mt-2 font-semibold">{fig}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Messages */}
         <div className="flex-1 overflow-y-auto mb-6 space-y-4">
           {messages.map((msg, idx) => (
@@ -479,6 +716,14 @@ export function ChatInterface({ figure }: { figure: string }) {
                   }
                 `}
               >
+                {/* Speaker badge for multi-figure mode */}
+                {msg.role === "assistant" && msg.speaker && figures.length > 1 && (
+                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-current/20">
+                    <div className={`px-2 py-1 rounded-full text-xs font-bold text-white ${getSpeakerColor(msg.speaker)}`}>
+                      {msg.speaker}
+                    </div>
+                  </div>
+                )}
                 <p className="text-sm leading-relaxed whitespace-pre-line">{msg.content}</p>
                 {msg.englishTranslation && language !== 'en' && (
                   <p className="text-xs mt-2 opacity-70 italic leading-relaxed whitespace-pre-line border-t border-current/20 pt-2">
@@ -612,6 +857,14 @@ export function ChatInterface({ figure }: { figure: string }) {
           title="Take a quiz about what you learned"
         >
           🧪
+        </button>
+
+        <button
+          onClick={() => setShowAddMemberModal(true)}
+          className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-transform flex items-center justify-center text-2xl font-bold bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white"
+          title="Add another historical figure to the conversation"
+        >
+          👥
         </button>
       </div>
 
