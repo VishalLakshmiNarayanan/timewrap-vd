@@ -426,9 +426,3 @@ export function ChatInterface({ figure }: { figure: string }) {
 }
 
 
-
-
-
-
-
-
