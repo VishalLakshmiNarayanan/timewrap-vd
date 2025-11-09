@@ -12,7 +12,7 @@ interface Message {
   content: string
 }
 
-type LangCode = 'auto' | 'en' | 'hi' | 'es' | 'fr' | 'de' | 'it' | 'ar' | 'zh' | 'ja'
+type LangCode = 'en' | 'hi' | 'es' | 'fr' | 'de' | 'it' | 'ar' | 'zh' | 'ja' | 'pt' | 'ru' | 'ko' | 'nl' | 'pl' | 'tr' | 'sv' | 'da' | 'fi' | 'no'
 
 export function ChatInterface({ figure }: { figure: string }) {
   const [messages, setMessages] = useState<Message[]>([
@@ -29,7 +29,6 @@ export function ChatInterface({ figure }: { figure: string }) {
   const [isQuizOpen, setIsQuizOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [language, setLanguage] = useState<LangCode>('en')
-  const [autoLangCode, setAutoLangCode] = useState<string>('en-US')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [figureGender, setFigureGender] = useState<'male' | 'female'>('male')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -55,23 +54,6 @@ export function ChatInterface({ figure }: { figure: string }) {
   }, [])
 
   // Removed Wikipedia integration
-
-  // Resolve figure language if using auto mode
-  useEffect(() => {
-    const resolve = async () => {
-      try {
-        const r = await fetch('/api/figure-language', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ figure })
-        })
-        if (r.ok) {
-          const data = await r.json()
-          if (data?.code) setAutoLangCode(data.code)
-        }
-      } catch {}
-    }
-    if (language === 'auto') resolve()
-  }, [language, figure])
 
   // Detect figure gender for voice selection
   useEffect(() => {
@@ -102,7 +84,16 @@ export function ChatInterface({ figure }: { figure: string }) {
       case 'ar': return 'ar-SA'
       case 'zh': return 'zh-CN'
       case 'ja': return 'ja-JP'
-      case 'auto': return autoLangCode || 'en-US'
+      case 'pt': return 'pt-PT'
+      case 'ru': return 'ru-RU'
+      case 'ko': return 'ko-KR'
+      case 'nl': return 'nl-NL'
+      case 'pl': return 'pl-PL'
+      case 'tr': return 'tr-TR'
+      case 'sv': return 'sv-SE'
+      case 'da': return 'da-DK'
+      case 'fi': return 'fi-FI'
+      case 'no': return 'no-NO'
       default: return 'en-US'
     }
   }
@@ -291,18 +282,6 @@ export function ChatInterface({ figure }: { figure: string }) {
     try { localStorage.setItem('historica-progress', JSON.stringify(p)) } catch {}
   }
 
-  const resetJourney = () => {
-    if (confirm('Are you sure you want to reset your entire journey? This will clear all progress, points, and badges.')) {
-      try {
-        localStorage.removeItem('historica-progress')
-        alert('Your journey has been reset!')
-        window.location.reload()
-      } catch (error) {
-        console.error('Error resetting journey:', error)
-      }
-    }
-  }
-
   const handleSend = async () => {
     if (!input.trim() || loading) return
 
@@ -450,7 +429,24 @@ export function ChatInterface({ figure }: { figure: string }) {
             title="Language"
           >
             <option value="en">English</option>
-            <option value="auto">Figure's language</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="pt">Portuguese</option>
+            <option value="ru">Russian</option>
+            <option value="zh">Chinese</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+            <option value="ar">Arabic</option>
+            <option value="hi">Hindi</option>
+            <option value="nl">Dutch</option>
+            <option value="pl">Polish</option>
+            <option value="tr">Turkish</option>
+            <option value="sv">Swedish</option>
+            <option value="da">Danish</option>
+            <option value="fi">Finnish</option>
+            <option value="no">Norwegian</option>
           </select>
 
           <Input
@@ -516,14 +512,6 @@ export function ChatInterface({ figure }: { figure: string }) {
           title="Take a quiz about what you learned"
         >
           🧪
-        </button>
-
-        <button
-          onClick={resetJourney}
-          className="w-auto px-4 h-14 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-transform flex items-center justify-center text-base font-semibold bg-red-600 hover:bg-red-700 text-white"
-          title="Reset your entire journey (clears all progress, points, and badges)"
-        >
-          Reset Journey
         </button>
       </div>
 

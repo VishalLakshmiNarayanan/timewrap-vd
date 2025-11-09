@@ -173,6 +173,25 @@ export default function Home() {
                 )}
               </div>
             </div>
+
+            <div className="pt-4 border-t border-amber-200 dark:border-slate-600">
+              <Button
+                onClick={() => {
+                  if (confirm('Are you sure you want to reset your entire journey? This will clear all progress, points, and badges.')) {
+                    try {
+                      localStorage.removeItem('historica-progress')
+                      alert('Your journey has been reset!')
+                      window.location.reload()
+                    } catch (error) {
+                      console.error('Error resetting journey:', error)
+                    }
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Reset Journey
+              </Button>
+            </div>
           </div>
         </Card>
       </div>
