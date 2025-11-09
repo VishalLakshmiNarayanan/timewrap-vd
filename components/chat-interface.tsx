@@ -23,6 +23,7 @@ export function ChatInterface({ figure }: { figure: string }) {
   const [loading, setLoading] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isQuizOpen, setIsQuizOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
@@ -121,6 +122,70 @@ export function ChatInterface({ figure }: { figure: string }) {
     }
   }
 
+  const handleExportPdf = async () => {
+    if (exporting) return
+    try {
+      setExporting(true)
+      const resp = await fetch('/api/summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ figure, messages }),
+      })
+      if (!resp.ok) throw new Error('Failed to create summary')
+      const data = await resp.json()
+
+      const title = `Historica — ${figure} Summary`
+      const styles = `
+        body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; padding:24px;color:#111}
+        h1{font-size:24px;margin:0 0 8px}
+        h2{font-size:18px;margin:24px 0 8px}
+        .muted{color:#555}
+        ul{margin:0 0 16px 20px}
+        li{margin:6px 0}
+        table{border-collapse:collapse;width:100%;margin-top:8px}
+        th,td{border:1px solid #ddd;padding:8px;text-align:left}
+        th{background:#f6f6f6}
+        .footer{margin-top:24px;font-size:12px;color:#777}
+      `
+      const pointsHtml = Array.isArray(data.points) && data.points.length
+        ? '<ul>' + data.points.map((p: string) => `<li>${p}</li>`).join('') + '</ul>'
+        : '<p class="muted">No key points available.</p>'
+      const timelineHtml = Array.isArray(data.timeline) && data.timeline.length
+        ? '<table><thead><tr><th>Date</th><th>Event</th></tr></thead><tbody>' +
+          data.timeline.map((t: any) => `<tr><td>${t.date}</td><td>${t.event}</td></tr>`).join('') +
+          '</tbody></table>'
+        : '<p class="muted">No timeline items available.</p>'
+
+      const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>${styles}</style></head>
+        <body>
+          <h1>${figure}</h1>
+          <div class="muted">Learning summary generated from your Historica conversation.</div>
+          <h2>Important Points</h2>
+          ${pointsHtml}
+          <h2>Timeline</h2>
+          ${timelineHtml}
+          <div class="footer">Saved from Historica • ${new Date().toLocaleString()}</div>
+          <script>window.onload = () => { window.print(); };</script>
+        </body></html>`
+
+      const w = window.open('', '_blank')
+      if (w) {
+        w.document.open()
+        w.document.write(html)
+        w.document.close()
+      } else {
+        const blob = new Blob([html], { type: 'text/html' })
+        const url = URL.createObjectURL(blob)
+        window.open(url, '_blank')
+      }
+    } catch (e) {
+      console.error(e)
+      alert('Unable to generate PDF. Please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <>
       <div className="max-w-4xl mx-auto px-6 py-8 flex flex-col h-screen">
@@ -187,14 +252,23 @@ export function ChatInterface({ figure }: { figure: string }) {
         </div>
       </div>
 
-      {/* Floating quiz button */}
+      {/* Floating actions */}
       <button
         onClick={() => setIsQuizOpen(true)}
         disabled={messages.length < 3}
         className="fixed bottom-8 right-8 w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg hover:shadow-xl hover:scale-110 transition-transform flex items-center justify-center text-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed z-40"
         title="Take a quiz about what you learned"
       >
-        🎯
+        🧪
+      </button>
+
+      <button
+        onClick={handleExportPdf}
+        disabled={exporting}
+        className="fixed bottom-8 left-8 w-auto px-4 h-14 rounded-full bg-gradient-to-br from-amber-600 to-orange-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-transform flex items-center justify-center text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed z-40"
+        title="Save important points and timeline as PDF"
+      >
+        {exporting ? 'Preparing…' : 'Save Summary PDF'}
       </button>
 
       {/* Quiz modal */}
@@ -207,17 +281,19 @@ export function ChatInterface({ figure }: { figure: string }) {
           const badgeList = badges.map((b) => `${b.icon} ${b.name}`).join(', ')
           const wrongList =
             wrong.length > 0
-              ? `\n\nWhere you slipped:\n` +
+              ? `\n\nOh! It seems a few details about me got a bit tangled. Let me clarify in my own words:` +
+                '\n' +
                 wrong
                   .map(
                     (w, i) =>
-                      `${i + 1}) ${w.question}\n- Your answer: ${w.userAnswer}\n- Correct: ${w.correctAnswer}\n- Why: ${w.explanation}`,
+                      `\n${i + 1}) ${w.question}\n• You said: ${w.userAnswer}\n• Actually: ${w.correctAnswer}\n• My take: ${w.explanation}`,
                   )
-                  .join('\n\n')
-              : ''
+                  .join('\n')
+              : `\nBrilliant — you understood me perfectly!`
 
-          const summary = `As ${figure}, here is my reflection on your quiz.\n\nYou scored ${score}/${total}.` +
-            (badgeList ? `\nBadges earned: ${badgeList}.` : '') + wrongList
+          const summary = `You scored ${score}/${total}.` +
+            (badgeList ? `\nBadges earned: ${badgeList}.` : '') + `\n` +
+            `As ${figure}, here’s how I’d put it:` + wrongList
 
           setMessages((prev) => [...prev, { role: 'assistant', content: summary }])
 
