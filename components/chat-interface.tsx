@@ -171,86 +171,94 @@ export function ChatInterface({ figure }: { figure: string }) {
     return result
   }
 
-  const speakText = async (text: string) => {
-    // Stop any current audio
-    stopSpeech()
-    setIsSpeaking(true)
+  const speakText = async (text: string): Promise<void> => {
+    return new Promise((resolve) => {
+      // Stop any current audio
+      stopSpeech()
+      setIsSpeaking(true)
 
-    // Prepare text for speech (optionally translate, then add variations)
-    let speechText: string = typeof text === 'string' ? text : String(text ?? '')
-    try {
-      if (language && language !== 'en') {
-        const target = langToBCP47(language)
-        const tr = await fetch('/api/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ targetLanguage: target, texts: [text] })
-        })
-        if (tr.ok) {
-          const data = await tr.json()
-          let translated: any = ''
-          if (Array.isArray(data?.translations)) {
-            const first = data.translations[0]
-            translated = (typeof first === 'string') ? first : (first?.text ?? first?.translatedText ?? '')
-          } else if (Array.isArray(data?.translatedTexts)) {
-            translated = data.translatedTexts[0]
+      // Prepare text for speech (optionally translate, then add variations)
+      let speechText: string = typeof text === 'string' ? text : String(text ?? '')
+
+      const processAndSpeak = async () => {
+        try {
+          if (language && language !== 'en') {
+            const target = langToBCP47(language)
+            const tr = await fetch('/api/translate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ targetLanguage: target, texts: [text] })
+            })
+            if (tr.ok) {
+              const data = await tr.json()
+              let translated: any = ''
+              if (Array.isArray(data?.translations)) {
+                const first = data.translations[0]
+                translated = (typeof first === 'string') ? first : (first?.text ?? first?.translatedText ?? '')
+              } else if (Array.isArray(data?.translatedTexts)) {
+                translated = data.translatedTexts[0]
+              }
+              if (translated) speechText = String(translated)
+            }
           }
-          if (translated) speechText = String(translated)
+        } catch {}
+        const textWithVariations = addSpeechVariations(speechText)
+
+        try {
+          // If non-English, prefer browser TTS so locale/voice matches immediately
+          if (language !== 'en') {
+            useBrowserTTS(textWithVariations, resolve)
+            return
+          }
+          // Try Murf AI TTS first with gender-based voice selection
+          const response = await fetch('/api/elevenlabs-tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: textWithVariations, gender: figureGender, language })
+          })
+
+          const data = await response.json()
+
+          if (data.fallbackToBrowser) {
+            // Fallback to browser TTS if Murf fails or is not configured
+            useBrowserTTS(textWithVariations, resolve)
+            return
+          }
+
+          if (data.audioData) {
+            // Convert base64 to blob and play
+            const audioBlob = base64ToBlob(data.audioData, data.mimeType || 'audio/mpeg')
+            const audioUrl = URL.createObjectURL(audioBlob)
+
+            const audio = new Audio(audioUrl)
+            audioRef.current = audio
+
+            audio.onended = () => {
+              setIsSpeaking(false)
+              URL.revokeObjectURL(audioUrl)
+              resolve()
+            }
+
+            audio.onerror = () => {
+              setIsSpeaking(false)
+              URL.revokeObjectURL(audioUrl)
+              // Fallback to browser TTS on error
+              useBrowserTTS(text, resolve)
+            }
+
+            await audio.play()
+          } else {
+            useBrowserTTS(textWithVariations, resolve)
+          }
+        } catch (error) {
+          console.error('Murf AI TTS error:', error)
+          // Fallback to browser TTS
+          useBrowserTTS(textWithVariations, resolve)
         }
       }
-    } catch {}
-    const textWithVariations = addSpeechVariations(speechText)
 
-    try {
-      // If non-English, prefer browser TTS so locale/voice matches immediately
-      if (language !== 'en') {
-        useBrowserTTS(textWithVariations)
-        return
-      }
-      // Try Murf AI TTS first with gender-based voice selection
-      const response = await fetch('/api/elevenlabs-tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: textWithVariations, gender: figureGender, language })
-      })
-
-      const data = await response.json()
-
-      if (data.fallbackToBrowser) {
-        // Fallback to browser TTS if Murf fails or is not configured
-        useBrowserTTS(textWithVariations)
-        return
-      }
-
-      if (data.audioData) {
-        // Convert base64 to blob and play
-        const audioBlob = base64ToBlob(data.audioData, data.mimeType || 'audio/mpeg')
-        const audioUrl = URL.createObjectURL(audioBlob)
-
-        const audio = new Audio(audioUrl)
-        audioRef.current = audio
-
-        audio.onended = () => {
-          setIsSpeaking(false)
-          URL.revokeObjectURL(audioUrl)
-        }
-
-        audio.onerror = () => {
-          setIsSpeaking(false)
-          URL.revokeObjectURL(audioUrl)
-          // Fallback to browser TTS on error
-          useBrowserTTS(text)
-        }
-
-        await audio.play()
-      } else {
-        useBrowserTTS(textWithVariations)
-      }
-    } catch (error) {
-      console.error('Murf AI TTS error:', error)
-      // Fallback to browser TTS
-      useBrowserTTS(textWithVariations)
-    }
+      processAndSpeak()
+    })
   }
 
   const translateMessageToEnglish = async (index: number) => {
@@ -276,9 +284,9 @@ export function ChatInterface({ figure }: { figure: string }) {
     }
   }
 
-  
 
-  const useBrowserTTS = (text: string) => {
+
+  const useBrowserTTS = (text: string, onComplete?: () => void) => {
     window.speechSynthesis.cancel()
 
     const target = langToBCP47(language)
@@ -286,11 +294,11 @@ export function ChatInterface({ figure }: { figure: string }) {
 
     const findBestVoice = (): SpeechSynthesisVoice | undefined => {
       if (!voices || voices.length === 0) return undefined
-      const byExact = voices.find(v => v.lang?.toLowerCase() === target.toLowerCase())
+      const byExact = voices.find((v: any) => v.lang?.toLowerCase() === target.toLowerCase())
       if (byExact) return byExact
-      const byPrefix = voices.find(v => v.lang?.toLowerCase().startsWith(lang2))
+      const byPrefix = voices.find((v: any) => v.lang?.toLowerCase().startsWith(lang2))
       if (byPrefix) return byPrefix
-      const byGoogle = voices.find(v => v.name?.toLowerCase().includes('google') && v.lang?.toLowerCase().startsWith(lang2))
+      const byGoogle = voices.find((v: any) => v.name?.toLowerCase().includes('google') && v.lang?.toLowerCase().startsWith(lang2))
       if (byGoogle) return byGoogle
       return voices[0]
     }
@@ -316,8 +324,14 @@ export function ChatInterface({ figure }: { figure: string }) {
     }
 
     utterance.onstart = () => setIsSpeaking(true)
-    utterance.onend = () => setIsSpeaking(false)
-    utterance.onerror = () => setIsSpeaking(false)
+    utterance.onend = () => {
+      setIsSpeaking(false)
+      if (onComplete) onComplete()
+    }
+    utterance.onerror = () => {
+      setIsSpeaking(false)
+      if (onComplete) onComplete()
+    }
     utteranceRef.current = utterance
     speakWithRetry(utterance)
   }
@@ -448,7 +462,9 @@ export function ChatInterface({ figure }: { figure: string }) {
         }
 
         setMessages((prev: Message[]) => [...prev, assistantMessage])
-        speakText(data.message)
+
+        // Wait for first speaker to finish talking before next speaker responds
+        await speakText(data.message)
 
         // Build updated conversation history with first response
         let conversationHistory = [...messages, { role: "user", content: userMessage }, assistantMessage]
@@ -460,7 +476,8 @@ export function ChatInterface({ figure }: { figure: string }) {
           const otherFigure = otherFigures[i]
           const previousSpeaker = i === 0 ? respondingFigure : otherFigures[i - 1]
 
-          await new Promise(resolve => setTimeout(resolve, 1500 * (i + 1))) // Stagger responses
+          // Small delay between speakers
+          await new Promise(resolve => setTimeout(resolve, 800))
 
           setLoading(true)
 
@@ -484,6 +501,13 @@ export function ChatInterface({ figure }: { figure: string }) {
 
           if (response2.ok) {
             const data2 = await response2.json()
+
+            // Handle empty or invalid response
+            if (!data2.message || data2.message.trim() === '') {
+              console.warn(`Empty response from ${otherFigure}`)
+              continue
+            }
+
             const assistantMessage2: Message = {
               role: "assistant",
               content: data2.message,
@@ -492,7 +516,9 @@ export function ChatInterface({ figure }: { figure: string }) {
 
             // Add to UI
             setMessages((prev: Message[]) => [...prev, assistantMessage2])
-            speakText(data2.message)
+
+            // Wait for this speaker to finish before next speaker
+            await speakText(data2.message)
 
             // Update conversation history for next figure
             conversationHistory = [...conversationHistory, assistantMessage2]
