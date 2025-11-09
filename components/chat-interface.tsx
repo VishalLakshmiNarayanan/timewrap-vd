@@ -6,9 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { QuizModal } from "./quiz-modal"
-import { AvatarModeModal } from "./avatar-mode-modal"
-import { ImageCartoonizer } from "./image-cartoonizer"
-import { TalkingAvatar } from "./talking-avatar"
 import { AddMemberModal } from "./add-member-modal"
 
 interface Message {
@@ -40,17 +37,9 @@ export function ChatInterface({ figure }: { figure: string }) {
   const [figureGender, setFigureGender] = useState<'male' | 'female'>('male')
   const [translatingIndex, setTranslatingIndex] = useState<number | null>(null)
 
-  // Avatar mode states
-  const [showAvatarModeModal, setShowAvatarModeModal] = useState(true)
-  const [showImageUploader, setShowImageUploader] = useState(false)
-  const [avatarEnabled, setAvatarEnabled] = useState(false)
-  const [avatarImage, setAvatarImage] = useState<string | null>(null)
-
   // Multi-figure conversation states
   const [figures, setFigures] = useState<string[]>([figure])
   const [showAddMemberModal, setShowAddMemberModal] = useState(false)
-  const [figureAvatars, setFigureAvatars] = useState<{ [key: string]: string }>({})
-  const [currentSpeaker, setCurrentSpeaker] = useState<string>(figure)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
@@ -93,62 +82,6 @@ export function ChatInterface({ figure }: { figure: string }) {
     }
     if (figure) detectGender()
   }, [figure])
-
-  // Load avatar settings from localStorage on mount
-  useEffect(() => {
-    const savedAvatar = localStorage.getItem(`avatar-${figure}`)
-    if (savedAvatar) {
-      try {
-        const parsed = JSON.parse(savedAvatar)
-        setAvatarEnabled(parsed.enabled || false)
-        setAvatarImage(parsed.image || null)
-        setShowAvatarModeModal(false) // Don't show modal if already configured
-      } catch (e) {
-        // Invalid data, show modal
-      }
-    }
-  }, [figure])
-
-  // Avatar mode handlers
-  const handleAvatarModeSelect = (useAvatar: boolean) => {
-    setShowAvatarModeModal(false)
-    if (useAvatar) {
-      setShowImageUploader(true)
-    } else {
-      setAvatarEnabled(false)
-      localStorage.setItem(`avatar-${figure}`, JSON.stringify({ enabled: false, image: null }))
-    }
-  }
-
-  const handleImageProcessed = (imageDataUrl: string) => {
-    setAvatarImage(imageDataUrl)
-    setAvatarEnabled(true)
-    setShowImageUploader(false)
-    localStorage.setItem(`avatar-${figure}`, JSON.stringify({ enabled: true, image: imageDataUrl }))
-    // Store in figureAvatars map
-    setFigureAvatars(prev => ({ ...prev, [figure]: imageDataUrl }))
-  }
-
-  const handleImageUploadSkip = () => {
-    setShowImageUploader(false)
-    setAvatarEnabled(false)
-    localStorage.setItem(`avatar-${figure}`, JSON.stringify({ enabled: false, image: null }))
-  }
-
-  const handleRemoveAvatar = () => {
-    setAvatarEnabled(false)
-    setAvatarImage(null)
-    localStorage.removeItem(`avatar-${figure}`)
-    setFigureAvatars(prev => {
-      const updated = { ...prev }
-      delete updated[figure]
-      return updated
-    })
-  }
-
-  const handleReplaceAvatar = () => {
-    setShowImageUploader(true)
-  }
 
   // Add new historical figure to conversation
   const handleAddMember = (newFigure: string) => {
@@ -493,7 +426,6 @@ export function ChatInterface({ figure }: { figure: string }) {
       if (figures.length > 1) {
         // Randomly select which figure responds (or they can take turns)
         const respondingFigure = figures[Math.floor(Math.random() * figures.length)]
-        setCurrentSpeaker(respondingFigure)
 
         const response = await fetch("/api/chat", {
           method: "POST",
@@ -524,7 +456,6 @@ export function ChatInterface({ figure }: { figure: string }) {
 
           setTimeout(async () => {
             setLoading(true)
-            setCurrentSpeaker(otherFigure)
 
             const response2 = await fetch("/api/chat", {
               method: "POST",
@@ -652,22 +583,6 @@ export function ChatInterface({ figure }: { figure: string }) {
 
   return (
     <>
-      {/* Avatar Mode Selection Modal */}
-      {showAvatarModeModal && (
-        <AvatarModeModal
-          figureName={figure}
-          onSelect={handleAvatarModeSelect}
-        />
-      )}
-
-      {/* Image Upload and Cartoonizer */}
-      {showImageUploader && (
-        <ImageCartoonizer
-          onImageProcessed={handleImageProcessed}
-          onSkip={handleImageUploadSkip}
-        />
-      )}
-
       {/* Add Member Modal */}
       {showAddMemberModal && (
         <AddMemberModal
@@ -678,30 +593,6 @@ export function ChatInterface({ figure }: { figure: string }) {
       )}
 
       <div className="max-w-4xl mx-auto px-6 py-8 flex flex-col min-h-[60vh]">
-        {/* Talking Avatars */}
-        {avatarEnabled && (
-          <div className="flex justify-center gap-4 mb-6 flex-wrap">
-            {figures.map((fig, idx) => (
-              <div key={idx}>
-                {figureAvatars[fig] ? (
-                  <TalkingAvatar
-                    imageUrl={figureAvatars[fig]}
-                    isSpeaking={isSpeaking && currentSpeaker === fig}
-                    isThinking={loading && currentSpeaker === fig}
-                    onRemove={fig === figure ? handleRemoveAvatar : undefined}
-                    onReplace={fig === figure ? handleReplaceAvatar : undefined}
-                  />
-                ) : (
-                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center border-4 border-gray-500 shadow-lg">
-                    <span className="text-4xl">{fig.charAt(0)}</span>
-                  </div>
-                )}
-                <p className="text-center text-xs mt-2 font-semibold">{fig}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Messages */}
         <div className="flex-1 overflow-y-auto mb-6 space-y-4">
           {messages.map((msg, idx) => (
