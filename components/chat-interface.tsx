@@ -105,9 +105,9 @@ export function ChatInterface({ figure }: { figure: string }) {
     const base = typeof text === 'string' ? text : String(text ?? '')
     const sentences = base.split(/([.!?]+)/).filter(s => s.trim())
     const variations = [
-      { chance: 0.35, sound: '*cough* ' },
-      { chance: 0.33, sound: '*chuckles* ' },
-      { chance: 0.32, sound: '*thoughtful pause* ' },
+      { chance: 0.05, sound: '*cough* ' },
+      { chance: 0.03, sound: '*chuckles* ' },
+      { chance: 0.02, sound: '*thoughtful pause* ' },
     ]
 
     let result = ''

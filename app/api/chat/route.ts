@@ -1,5 +1,4 @@
-import { generateText } from "ai"
-import { groq } from "@ai-sdk/groq"
+// Switched to Anthropic Messages API
 
 interface RequestBody {
   figure: string
@@ -57,18 +56,40 @@ CRITICAL RULES:
 LANGUAGE:
 ${langInstruction}`
 
-    const response = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
-      system: systemPrompt,
-      messages: messages.map((msg) => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-      })),
-      temperature: 0.7,
-      maxTokens: 256,
-    })
+    const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
+    if (!ANTHROPIC_API_KEY) {
+      return Response.json({ error: 'Anthropic API key not configured' }, { status: 503 })
+    }
 
-    return Response.json({ message: response.text })
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 256,
+        system: systemPrompt,
+        messages: messages.map((m) => ({
+          role: m.role,
+          content: [{ type: 'text', text: m.content }],
+        })),
+        temperature: 0.7,
+      }),
+    })
+    if (!resp.ok) {
+      const err = await resp.text()
+      console.error('[anthropic chat] error:', err)
+      return Response.json({ error: 'Failed to generate response' }, { status: 500 })
+    }
+    const data = await resp.json()
+    const out = Array.isArray(data?.content)
+      ? data.content.map((c: any) => (c?.text ?? '')).join('').trim()
+      : String(data?.content?.[0]?.text ?? '').trim()
+
+    return Response.json({ message: out })
   } catch (error) {
     console.error("API Error:", error)
     return Response.json({ error: "Failed to generate response" }, { status: 500 })
