@@ -3,7 +3,7 @@ import { groq } from "@ai-sdk/groq"
 
 export async function POST(request: Request) {
   try {
-    const { figure, messages } = await request.json()
+    const { figure, messages, language } = await request.json()
     if (!figure || !messages || messages.length === 0) {
       return Response.json({ error: "Missing required parameters" }, { status: 400 })
     }
@@ -32,6 +32,7 @@ Rules:
 - Keep points concise, factual, and based on the conversation.
 - Timeline should be chronological and 3-10 entries when possible.
 - If uncertain, omit rather than invent.
+- Write the points and timeline event text in ${language === 'auto' ? `the language most associated with ${figure} (their native or primary language), otherwise English` : (language || 'English')}.
 `,
         },
       ],
@@ -46,4 +47,3 @@ Rules:
     return Response.json({ error: "Failed to generate summary" }, { status: 500 })
   }
 }
-

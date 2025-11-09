@@ -4,11 +4,18 @@ import { groq } from "@ai-sdk/groq"
 interface RequestBody {
   figure: string
   messages: Array<{ role: "user" | "assistant"; content: string }>
+  language?: string // e.g., 'en', 'hi', 'auto'
 }
 
 export async function POST(request: Request) {
   try {
-    const { figure, messages }: RequestBody = await request.json()
+    const { figure, messages, language }: RequestBody = await request.json()
+
+    const langInstruction = language === 'auto'
+      ? `Respond in the language most associated with ${figure} (their native or historically primary language). If uncertain, use English.`
+      : language
+        ? `Respond in ${language}.`
+        : `Respond in the user's language if indicated; otherwise English.`
 
     const systemPrompt = `You are ${figure}, a historical figure. You will answer questions about your life, era, and expertise.
 
@@ -20,7 +27,10 @@ CRITICAL RULES:
 5. If you don't know something from your era, admit it honestly.
 6. NEVER pretend to know about modern events, technology, or people unless they existed in your time.
 7. NEVER break character under any circumstances.
-8. Be authentic to your historical persona and knowledge.`
+8. Be authentic to your historical persona and knowledge.
+
+LANGUAGE:
+${langInstruction}`
 
     const response = await generateText({
       model: groq("llama-3.3-70b-versatile"),

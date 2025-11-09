@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,8 @@ interface Message {
   role: "user" | "assistant"
   content: string
 }
+
+type LangCode = 'auto' | 'en' | 'hi' | 'es' | 'fr' | 'de' | 'it' | 'ar' | 'zh' | 'ja'
 
 export function ChatInterface({ figure }: { figure: string }) {
   const [messages, setMessages] = useState<Message[]>([
@@ -24,29 +26,68 @@ export function ChatInterface({ figure }: { figure: string }) {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isQuizOpen, setIsQuizOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [language, setLanguage] = useState<LangCode>('en')
+  const [autoLangCode, setAutoLangCode] = useState<string>('en-US')
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  useEffect(() => { scrollToBottom() }, [messages])
 
+  // Load available TTS voices
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    const load = () => setVoices(window.speechSynthesis.getVoices())
+    load()
+    window.speechSynthesis.onvoiceschanged = load
+  }, [])
+
+  // Resolve figure language if using auto mode
+  useEffect(() => {
+    const resolve = async () => {
+      try {
+        const r = await fetch('/api/figure-language', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ figure })
+        })
+        if (r.ok) {
+          const data = await r.json()
+          if (data?.code) setAutoLangCode(data.code)
+        }
+      } catch {}
+    }
+    if (language === 'auto') resolve()
+  }, [language, figure])
+
+  const langToBCP47 = (lang: LangCode): string => {
+    switch (lang) {
+      case 'en': return 'en-US'
+      case 'hi': return 'hi-IN'
+      case 'es': return 'es-ES'
+      case 'fr': return 'fr-FR'
+      case 'de': return 'de-DE'
+      case 'it': return 'it-IT'
+      case 'ar': return 'ar-SA'
+      case 'zh': return 'zh-CN'
+      case 'ja': return 'ja-JP'
+      case 'auto': return autoLangCode || 'en-US'
+      default: return 'en-US'
+    }
+  }
 
   const speakText = (text: string) => {
     window.speechSynthesis.cancel()
-
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = 0.9
     utterance.pitch = 1
-    utteranceRef.current = utterance
-
+    const target = langToBCP47(language)
+    utterance.lang = target
+    const voice = voices.find(v => v.lang?.toLowerCase().startsWith(target.slice(0,2).toLowerCase()))
+    if (voice) utterance.voice = voice
     utterance.onstart = () => setIsSpeaking(true)
     utterance.onend = () => setIsSpeaking(false)
     utterance.onerror = () => setIsSpeaking(false)
-
+    utteranceRef.current = utterance
     window.speechSynthesis.speak(utterance)
   }
 
@@ -80,9 +121,7 @@ export function ChatInterface({ figure }: { figure: string }) {
   }
 
   const saveProgress = (p: Progress) => {
-    try {
-      localStorage.setItem('historica-progress', JSON.stringify(p))
-    } catch {}
+    try { localStorage.setItem('historica-progress', JSON.stringify(p)) } catch {}
   }
 
   const handleSend = async () => {
@@ -98,13 +137,12 @@ export function ChatInterface({ figure }: { figure: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          figure: figure,
+          figure,
           messages: [...messages, { role: "user", content: userMessage }],
+          language,
         }),
       })
-
       if (!response.ok) throw new Error("Failed to get response")
-
       const data = await response.json()
       setMessages((prev) => [...prev, { role: "assistant", content: data.message }])
       speakText(data.message)
@@ -112,10 +150,7 @@ export function ChatInterface({ figure }: { figure: string }) {
       console.error("Error:", error)
       setMessages((prev) => [
         ...prev,
-        {
-          role: "assistant",
-          content: "I apologize, but I cannot continue this conversation at the moment.",
-        },
+        { role: "assistant", content: "I apologize, but I cannot continue this conversation at the moment." },
       ])
     } finally {
       setLoading(false)
@@ -129,7 +164,7 @@ export function ChatInterface({ figure }: { figure: string }) {
       const resp = await fetch('/api/summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ figure, messages }),
+        body: JSON.stringify({ figure, messages, language }),
       })
       if (!resp.ok) throw new Error('Failed to create summary')
       const data = await resp.json()
@@ -203,7 +238,7 @@ export function ChatInterface({ figure }: { figure: string }) {
                   }
                 `}
               >
-                <p className="text-sm leading-relaxed">{msg.content}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-line">{msg.content}</p>
                 {msg.role === "assistant" && (
                   <button
                     onClick={() => speakText(msg.content)}
@@ -228,7 +263,25 @@ export function ChatInterface({ figure }: { figure: string }) {
         </div>
 
         {/* Input */}
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          <select
+            value={language}
+            className="border border-amber-200 dark:border-slate-600 rounded px-2 py-2 bg-white dark:bg-slate-800 text-sm text-amber-900 dark:text-amber-100"
+            onChange={(e) => setLanguage(e.target.value as LangCode)}
+            title="Language"
+          >
+            <option value="en">English</option>
+            <option value="auto">Auto (figure's language)</option>
+            <option value="hi">Hindi</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="ar">Arabic</option>
+            <option value="zh">Chinese</option>
+            <option value="ja">Japanese</option>
+          </select>
+
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -277,46 +330,45 @@ export function ChatInterface({ figure }: { figure: string }) {
         messages={messages}
         isOpen={isQuizOpen}
         onClose={() => setIsQuizOpen(false)}
-        onComplete={({ score, total, wrong, badges }) => {
-          const badgeList = badges.map((b) => `${b.icon} ${b.name}`).join(', ')
-          const wrongList =
-            wrong.length > 0
-              ? `\n\nOh! It seems a few details about me got a bit tangled. Let me clarify in my own words:` +
-                '\n' +
-                wrong
-                  .map(
-                    (w, i) =>
-                      `\n${i + 1}) ${w.question}\n• You said: ${w.userAnswer}\n• Actually: ${w.correctAnswer}\n• My take: ${w.explanation}`,
-                  )
-                  .join('\n')
-              : `\nBrilliant — you understood me perfectly!`
-
-          const summary = `You scored ${score}/${total}.` +
-            (badgeList ? `\nBadges earned: ${badgeList}.` : '') + `\n` +
-            `As ${figure}, here’s how I’d put it:` + wrongList
-
-          setMessages((prev) => [...prev, { role: 'assistant', content: summary }])
+        onComplete={async ({ score, total, wrong, badges }) => {
+          try {
+            const r = await fetch('/api/reflection', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ figure, score, total, wrong, language }),
+            })
+            if (r.ok) {
+              const data = await r.json()
+              setMessages((prev) => [...prev, { role: 'assistant', content: data.message }])
+            } else {
+              // Fallback if API fails
+              const badgeList = badges.map((b) => `${b.icon} ${b.name}`).join(', ')
+              const wrongList = wrong.length
+                ? `\n\nOh! It seems a few details about me got a bit tangled. Let me clarify in my own words:` +
+                  '\n' + wrong.map((w, i) => `\n${i + 1}) ${w.question}\n• You said: ${w.userAnswer}\n• Actually: ${w.correctAnswer}\n• My take: ${w.explanation}`).join('\n')
+                : `\nBrilliant — you understood me perfectly!`
+              const summary = `You scored ${score}/${total}.` + (badgeList ? `\nBadges earned: ${badgeList}.` : '') + `\n` + `As ${figure}, here’s how I’d put it:` + wrongList
+              setMessages((prev) => [...prev, { role: 'assistant', content: summary }])
+            }
+          } catch {
+            // Silent fallback handled above
+          }
 
           // Update progress: 10 points per correct, +10 bonus for perfect
           const bonus = score === total ? 10 : 0
           const add = score * 10 + bonus
           const progress = getProgress()
-
           progress.points = (progress.points ?? 0) + add
           const existing = new Map<string, StoredBadge>()
           for (const b of progress.badges) existing.set(b.id, b)
           for (const b of badges) existing.set(b.id, { id: b.id, name: b.name, description: b.description, icon: b.icon })
           progress.badges = Array.from(existing.values())
-
-          if (!progress.figures[figure]) {
-            progress.figures[figure] = { quizzes: 0, perfect: false }
-          }
+          if (!progress.figures[figure]) progress.figures[figure] = { quizzes: 0, perfect: false }
           progress.figures[figure].quizzes += 1
           if (score === total) progress.figures[figure].perfect = true
-
           saveProgress(progress)
         }}
       />
     </>
   )
 }
+
