@@ -10,31 +10,6 @@ export async function POST(request: Request) {
 
     const conversationText = messages.map((m: any) => `${m.role}: ${m.content}`).join("\n")
 
-    const codeToName = (code?: string) => {
-      switch (code) {
-        case 'en': return 'English'
-        case 'es': return 'Spanish'
-        case 'fr': return 'French'
-        case 'de': return 'German'
-        case 'it': return 'Italian'
-        case 'pt': return 'Portuguese'
-        case 'ru': return 'Russian'
-        case 'zh': return 'Chinese'
-        case 'ja': return 'Japanese'
-        case 'ko': return 'Korean'
-        case 'ar': return 'Arabic'
-        case 'hi': return 'Hindi'
-        case 'nl': return 'Dutch'
-        case 'pl': return 'Polish'
-        case 'tr': return 'Turkish'
-        case 'sv': return 'Swedish'
-        case 'da': return 'Danish'
-        case 'fi': return 'Finnish'
-        case 'no': return 'Norwegian'
-        default: return 'English'
-      }
-    }
-
     const { text } = await generateText({
       model: groq("llama-3.3-70b-versatile"),
       messages: [
@@ -57,7 +32,7 @@ Rules:
 - Keep points concise, factual, and based on the conversation.
 - Timeline should be chronological and 3-10 entries when possible.
 - If uncertain, omit rather than invent.
-- Write the points and timeline event text in ${language === 'auto' ? `the language most associated with ${figure} (their native or primary language), otherwise English` : codeToName(language)}.
+- Write the points and timeline event text in ${language === 'auto' ? `the language most associated with ${figure} (their native or primary language), otherwise English` : (language || 'English')}.
 `,
         },
       ],

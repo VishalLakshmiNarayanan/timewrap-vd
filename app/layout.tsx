@@ -62,7 +62,6 @@ export default function RootLayout({
             {children}
             <footer className="text-center text-xs text-amber-800 py-6 border-t border-amber-200 bg-transparent">
               Powered by Claude AI
-              Educational purposes only. Historical responses are AI-generated simulations.
             </footer>
             <Analytics />
           </div>

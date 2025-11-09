@@ -18,14 +18,9 @@ const MURF_VOICES = {
 
 export async function POST(request: Request) {
   try {
-    const { text, gender, language } = await request.json()
+    const { text, gender } = await request.json()
     if (!text) {
       return Response.json({ error: "Missing text" }, { status: 400 })
-    }
-
-    // If language is explicitly non-English, let the client use browser TTS
-    if (language && language !== 'en') {
-      return Response.json({ fallbackToBrowser: true })
     }
 
     const MURF_API_KEY = process.env.MURF_API_KEY
