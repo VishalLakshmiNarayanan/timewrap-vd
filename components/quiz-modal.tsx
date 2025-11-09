@@ -20,14 +20,28 @@ interface Badge {
   earned: boolean
 }
 
+interface QuizResultSummary {
+  score: number
+  total: number
+  wrong: Array<{
+    index: number
+    question: string
+    userAnswer: string
+    correctAnswer: string
+    explanation: string
+  }>
+  badges: Badge[]
+}
+
 interface QuizModalProps {
   figure: string
   messages: Array<{ role: string; content: string }>
   isOpen: boolean
   onClose: () => void
+  onComplete?: (summary: QuizResultSummary) => void
 }
 
-export function QuizModal({ figure, messages, isOpen, onClose }: QuizModalProps) {
+export function QuizModal({ figure, messages, isOpen, onClose, onComplete }: QuizModalProps) {
   const [questions, setQuestions] = useState<QuizQuestion[]>([])
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswers, setSelectedAnswers] = useState<(number | null)[]>([])
@@ -89,11 +103,27 @@ export function QuizModal({ figure, messages, isOpen, onClose }: QuizModalProps)
     })
 
     setScore(correctCount)
-    generateBadges(correctCount)
+    const earnedBadges = generateBadges(correctCount)
+    const wrong = questions
+      .map((q, idx) => ({
+        index: idx,
+        question: q.question,
+        userAnswer: q.options[(selectedAnswers[idx] ?? 0) as number],
+        correctAnswer: q.options[q.correctAnswer],
+        explanation: q.explanation,
+        isCorrect: selectedAnswers[idx] === q.correctAnswer,
+      }))
+      .filter((x) => !x.isCorrect)
+      .map(({ isCorrect, ...rest }) => rest)
+
     setShowResults(true)
+
+    if (onComplete) {
+      onComplete({ score: correctCount, total: questions.length, wrong, badges: earnedBadges })
+    }
   }
 
-  const generateBadges = (finalScore: number) => {
+  const generateBadges = (finalScore: number): Badge[] => {
     const newBadges: Badge[] = [
       {
         id: "learner",
@@ -124,7 +154,9 @@ export function QuizModal({ figure, messages, isOpen, onClose }: QuizModalProps)
       })
     }
 
-    setBadges(newBadges.filter((b) => b.earned))
+    const earned = newBadges.filter((b) => b.earned)
+    setBadges(earned)
+    return earned
   }
 
   const resetQuiz = () => {

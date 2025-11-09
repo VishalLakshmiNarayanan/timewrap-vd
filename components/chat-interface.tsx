@@ -54,6 +54,36 @@ export function ChatInterface({ figure }: { figure: string }) {
     setIsSpeaking(false)
   }
 
+  // Progress persistence helpers
+  type StoredBadge = { id: string; name: string; description: string; icon: string }
+  type Progress = {
+    points: number
+    badges: StoredBadge[]
+    figures: { [name: string]: { quizzes: number; perfect: boolean } }
+  }
+
+  const getProgress = (): Progress => {
+    if (typeof window === 'undefined') return { points: 0, badges: [], figures: {} }
+    try {
+      const raw = localStorage.getItem('historica-progress')
+      if (!raw) return { points: 0, badges: [], figures: {} }
+      const parsed = JSON.parse(raw)
+      return {
+        points: parsed.points ?? 0,
+        badges: Array.isArray(parsed.badges) ? parsed.badges : [],
+        figures: parsed.figures ?? {},
+      }
+    } catch {
+      return { points: 0, badges: [], figures: {} }
+    }
+  }
+
+  const saveProgress = (p: Progress) => {
+    try {
+      localStorage.setItem('historica-progress', JSON.stringify(p))
+    } catch {}
+  }
+
   const handleSend = async () => {
     if (!input.trim() || loading) return
 
@@ -168,7 +198,49 @@ export function ChatInterface({ figure }: { figure: string }) {
       </button>
 
       {/* Quiz modal */}
-      <QuizModal figure={figure} messages={messages} isOpen={isQuizOpen} onClose={() => setIsQuizOpen(false)} />
+      <QuizModal
+        figure={figure}
+        messages={messages}
+        isOpen={isQuizOpen}
+        onClose={() => setIsQuizOpen(false)}
+        onComplete={({ score, total, wrong, badges }) => {
+          const badgeList = badges.map((b) => `${b.icon} ${b.name}`).join(', ')
+          const wrongList =
+            wrong.length > 0
+              ? `\n\nWhere you slipped:\n` +
+                wrong
+                  .map(
+                    (w, i) =>
+                      `${i + 1}) ${w.question}\n- Your answer: ${w.userAnswer}\n- Correct: ${w.correctAnswer}\n- Why: ${w.explanation}`,
+                  )
+                  .join('\n\n')
+              : ''
+
+          const summary = `As ${figure}, here is my reflection on your quiz.\n\nYou scored ${score}/${total}.` +
+            (badgeList ? `\nBadges earned: ${badgeList}.` : '') + wrongList
+
+          setMessages((prev) => [...prev, { role: 'assistant', content: summary }])
+
+          // Update progress: 10 points per correct, +10 bonus for perfect
+          const bonus = score === total ? 10 : 0
+          const add = score * 10 + bonus
+          const progress = getProgress()
+
+          progress.points = (progress.points ?? 0) + add
+          const existing = new Map<string, StoredBadge>()
+          for (const b of progress.badges) existing.set(b.id, b)
+          for (const b of badges) existing.set(b.id, { id: b.id, name: b.name, description: b.description, icon: b.icon })
+          progress.badges = Array.from(existing.values())
+
+          if (!progress.figures[figure]) {
+            progress.figures[figure] = { quizzes: 0, perfect: false }
+          }
+          progress.figures[figure].quizzes += 1
+          if (score === total) progress.figures[figure].perfect = true
+
+          saveProgress(progress)
+        }}
+      />
     </>
   )
 }

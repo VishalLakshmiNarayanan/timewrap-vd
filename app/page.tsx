@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,9 @@ import { Card } from "@/components/ui/card"
 export default function Home() {
   const [figure, setFigure] = useState("")
   const [loading, setLoading] = useState(false)
+  const [points, setPoints] = useState(0)
+  const [badges, setBadges] = useState<{ id: string; name: string; icon: string }[]>([])
+  const [figuresLearned, setFiguresLearned] = useState<{ name: string; perfect: boolean }[]>([])
   const router = useRouter()
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -22,6 +25,25 @@ export default function Home() {
     const encodedFigure = encodeURIComponent(figure.trim())
     router.push(`/chat/${encodedFigure}`)
   }
+
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('historica-progress') : null
+      if (!raw) return
+      const data = JSON.parse(raw)
+      setPoints(data.points ?? 0)
+      if (Array.isArray(data.badges)) {
+        setBadges(data.badges.map((b: any) => ({ id: b.id, name: b.name, icon: b.icon })))
+      }
+      const figs: { name: string; perfect: boolean }[] = []
+      if (data.figures) {
+        for (const key of Object.keys(data.figures)) {
+          figs.push({ name: key, perfect: !!data.figures[key]?.perfect })
+        }
+      }
+      setFiguresLearned(figs)
+    } catch {}
+  }, [])
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100 dark:from-slate-900 dark:to-slate-800">
@@ -38,8 +60,8 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <div className="max-w-2xl mx-auto px-6 py-16 flex items-center justify-center min-h-[calc(100vh-120px)]">
-        <Card className="w-full p-8 bg-white dark:bg-slate-800 border-amber-200 dark:border-slate-700">
+      <div className="max-w-2xl mx-auto px-6 py-16 min-h-[calc(100vh-120px)]">
+        <Card className="w-full p-8 mb-8 bg-white dark:bg-slate-800 border-amber-200 dark:border-slate-700">
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-semibold text-amber-900 dark:text-amber-100 mb-2">
@@ -87,6 +109,67 @@ export default function Home() {
                       {name}
                     </button>
                   ),
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Engagement Section */}
+        <Card className="w-full p-8 bg-white dark:bg-slate-800 border-amber-200 dark:border-slate-700">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-semibold text-amber-900 dark:text-amber-100 mb-2">Your Journey</h2>
+              <p className="text-amber-800 dark:text-amber-200">Track your progress, badges, and the figures you've learned about.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-lg bg-amber-50 dark:bg-slate-700">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Points</p>
+                <p className="text-3xl font-bold text-amber-900 dark:text-amber-100 mt-1">{points}</p>
+              </div>
+              <div className="p-4 rounded-lg bg-amber-50 dark:bg-slate-700">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Badges</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {badges.length === 0 ? (
+                    <span className="text-sm text-amber-700 dark:text-amber-300">No badges yet</span>
+                  ) : (
+                    badges.map((b) => (
+                      <span key={b.id} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-white dark:bg-slate-800 border border-amber-200 dark:border-slate-600 text-sm text-amber-900 dark:text-amber-100">
+                        <span>{b.icon}</span> {b.name}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="p-4 rounded-lg bg-amber-50 dark:bg-slate-700">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Perfect Scores</p>
+                <div className="mt-2 text-sm text-amber-900 dark:text-amber-100">
+                  {figuresLearned.filter((f) => f.perfect).length === 0 ? (
+                    <span className="text-amber-700 dark:text-amber-300">None yet</span>
+                  ) : (
+                    figuresLearned
+                      .filter((f) => f.perfect)
+                      .map((f) => (
+                        <span key={f.name} className="block">⏳ {f.name}</span>
+                      ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-2">Figures Learned</p>
+              <div className="flex flex-wrap gap-2">
+                {figuresLearned.length === 0 ? (
+                  <span className="text-sm text-amber-700 dark:text-amber-300">Start a conversation to begin learning.</span>
+                ) : (
+                  figuresLearned.map((f) => (
+                    <span key={f.name} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 dark:bg-slate-700 text-amber-900 dark:text-amber-100 border border-amber-200 dark:border-slate-600">
+                      <span className="font-medium">{f.name}</span>
+                      {f.perfect && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-200 dark:bg-slate-600">Perfect</span>}
+                    </span>
+                  ))
                 )}
               </div>
             </div>
