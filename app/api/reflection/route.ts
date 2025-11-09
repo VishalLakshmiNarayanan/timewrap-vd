@@ -52,4 +52,3 @@ ${wrongBlock || 'None'}
     return Response.json({ error: "Failed to generate reflection" }, { status: 500 })
   }
 }
-

@@ -33,4 +33,3 @@ No commentary.`,
     return Response.json({ code: 'en-US', name: 'English' })
   }
 }
-
