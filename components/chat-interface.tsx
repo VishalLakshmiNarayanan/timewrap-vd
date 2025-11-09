@@ -10,6 +10,7 @@ import { QuizModal } from "./quiz-modal"
 interface Message {
   role: "user" | "assistant"
   content: string
+  englishTranslation?: string
 }
 
 type LangCode = 'en' | 'hi' | 'es' | 'fr' | 'de' | 'it' | 'ar' | 'zh' | 'ja' | 'pt' | 'ru' | 'ko' | 'nl' | 'pl' | 'tr' | 'sv' | 'da' | 'fi' | 'no'
@@ -31,6 +32,7 @@ export function ChatInterface({ figure }: { figure: string }) {
   const [language, setLanguage] = useState<LangCode>('en')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [figureGender, setFigureGender] = useState<'male' | 'female'>('male')
+  const [translatingIndex, setTranslatingIndex] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -200,6 +202,29 @@ export function ChatInterface({ figure }: { figure: string }) {
       console.error('Murf AI TTS error:', error)
       // Fallback to browser TTS
       useBrowserTTS(textWithVariations)
+    }
+  }
+
+  const translateMessageToEnglish = async (index: number) => {
+    try {
+      setTranslatingIndex(index)
+      const msg = messages[index]
+      if (!msg || msg.role !== 'assistant') return
+      const resp = await fetch('/api/translate-to-english', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: msg.content, sourceLanguage: language })
+      })
+      if (!resp.ok) throw new Error('Translate failed')
+      const data = await resp.json()
+      const eng = String(data.translation || '')
+      if (eng) {
+        setMessages(prev => prev.map((m, i) => i === index ? { ...m, englishTranslation: eng } : m))
+      }
+    } catch (e) {
+      console.error('Translate error', e)
+    } finally {
+      setTranslatingIndex(null)
     }
   }
 
@@ -427,6 +452,11 @@ export function ChatInterface({ figure }: { figure: string }) {
                 `}
               >
                 <p className="text-sm leading-relaxed whitespace-pre-line">{msg.content}</p>
+                {msg.englishTranslation && language !== 'en' && (
+                  <p className="text-xs mt-2 opacity-70 italic leading-relaxed whitespace-pre-line border-t border-current/20 pt-2">
+                    {msg.englishTranslation}
+                  </p>
+                )}
                 {msg.role === "assistant" && (
                   <button
                     onClick={() => speakText(msg.content)}
@@ -434,6 +464,16 @@ export function ChatInterface({ figure }: { figure: string }) {
                     title="Play audio"
                   >
                     🔊 Read aloud
+                  </button>
+                )}
+                {msg.role === 'assistant' && language !== 'en' && !msg.englishTranslation && (
+                  <button
+                    onClick={() => translateMessageToEnglish(idx)}
+                    className="ml-3 mt-2 text-xs opacity-70 hover:opacity-100 transition-opacity text-[#8e7555] hover:text-[#5f2712]"
+                    title="Show English transcript"
+                    disabled={translatingIndex === idx}
+                  >
+                    {translatingIndex === idx ? 'Translating…' : 'Show English transcript'}
                   </button>
                 )}
               </Card>
