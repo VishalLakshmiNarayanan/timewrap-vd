@@ -31,6 +31,7 @@ export function ChatInterface({ figure }: { figure: string }) {
   const [language, setLanguage] = useState<LangCode>('en')
   const [autoLangCode, setAutoLangCode] = useState<string>('en-US')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
+  const [profileUrl, setProfileUrl] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const recognitionRef = useRef<any>(null)
@@ -51,6 +52,26 @@ export function ChatInterface({ figure }: { figure: string }) {
     const supported = !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
     setSttSupported(supported)
   }, [])
+
+  // Load a Wikipedia profile image for this figure
+  useEffect(() => {
+    let canceled = false
+    const run = async () => {
+      try {
+        const r = await fetch('/api/wikipedia-images', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ figure })
+        })
+        if (r.ok) {
+          const data = await r.json()
+          if (!canceled) setProfileUrl(data?.url || null)
+        }
+      } catch {}
+    }
+    if (figure) run()
+    return () => { canceled = true }
+  }, [figure])
 
   // Resolve figure language if using auto mode
   useEffect(() => {
@@ -268,6 +289,21 @@ export function ChatInterface({ figure }: { figure: string }) {
   return (
     <>
       <div className="max-w-4xl mx-auto px-6 py-8 flex flex-col min-h-[60vh]">
+        {/* Figure header */}
+        <div className="mb-4 flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#a38d68] bg-[#fff7ed] flex items-center justify-center">
+            {profileUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profileUrl} alt={`${figure} portrait`} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-[#a16207] text-xl">🗝️</span>
+            )}
+          </div>
+          <div className="leading-tight">
+            <div className="text-lg font-bold text-[#5f2712]">{figure}</div>
+            <div className="text-xs text-[#8e7555]">Historical Figure</div>
+          </div>
+        </div>
         {/* Messages */}
         <div className="flex-1 overflow-y-auto mb-6 space-y-4">
           {messages.map((msg, idx) => (
