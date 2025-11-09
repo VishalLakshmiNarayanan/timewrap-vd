@@ -274,7 +274,12 @@ export function ChatInterface({ figure }: { figure: string }) {
             <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <Card
                 className={`
-                  max-w-md px-4 py-3 rounded-lg group border-2\n                  ${\n                    msg.role === "user"\n                      ? "border-[#a38d68] bg-[#fff7ed] text-[#5f2712]"\n                      : "border-[#e4d5bb] bg-[#fff7ed] text-[#494234]"\n                  }
+                  max-w-md px-4 py-3 rounded-lg group
+                  ${
+                    msg.role === "user"
+                      ? "bg-amber-600 text-white"
+                      : "bg-amber-100 dark:bg-slate-700 text-amber-900 dark:text-amber-50"
+                  }
                 `}
               >
                 <p className="text-sm leading-relaxed whitespace-pre-line">{msg.content}</p>
@@ -424,5 +429,3 @@ export function ChatInterface({ figure }: { figure: string }) {
     </>
   )
 }
-
-
