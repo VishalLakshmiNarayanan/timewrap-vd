@@ -315,15 +315,7 @@ export function ChatInterface({ figure }: { figure: string }) {
             title="Language"
           >
             <option value="en">English</option>
-            <option value="auto">Auto (figure's language)</option>
-            <option value="hi">Hindi</option>
-            <option value="es">Spanish</option>
-            <option value="fr">French</option>
-            <option value="de">German</option>
-            <option value="it">Italian</option>
-            <option value="ar">Arabic</option>
-            <option value="zh">Chinese</option>
-            <option value="ja">Japanese</option>
+            <option value="auto">Figure's language</option>
           </select>
 
           <Input
@@ -348,6 +340,20 @@ export function ChatInterface({ figure }: { figure: string }) {
             className="bg-amber-600 hover:bg-amber-700 text-white"
           >
             Send
+          </Button>
+          <Button
+            onClick={() => {
+              setInput("")
+              setMessages([
+                { role: 'assistant', content: `Greetings! I am ${figure}. I am pleased to share knowledge about my era and expertise. What would you like to know?` },
+              ])
+            }}
+            disabled={loading}
+            variant="secondary"
+            className="bg-slate-200 hover:bg-slate-300 text-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white"
+            title="Clear current chat"
+          >
+            Clear
           </Button>
           {isSpeaking && (
             <Button onClick={stopSpeech} className="bg-red-600 hover:bg-red-700 text-white" title="Stop audio">

@@ -46,7 +46,7 @@ export default function Home() {
   }, [])
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100 dark:from-slate-900 dark:to-slate-800">
+    <main className="min-h-screen">
       {/* Header */}
       <header className="border-b border-amber-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-8">
@@ -116,7 +116,7 @@ export default function Home() {
         </Card>
 
         {/* Engagement Section */}
-        <Card className="w-full p-8 bg-white dark:bg-slate-800 border-amber-200 dark:border-slate-700">
+        <Card className="w-full p-8 bg-white/90 dark:bg-slate-800/80 border-amber-200 dark:border-slate-700">
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-semibold text-amber-900 dark:text-amber-100 mb-2">Your Journey</h2>

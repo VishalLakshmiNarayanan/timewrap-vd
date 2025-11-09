@@ -38,11 +38,19 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        {children}
-        <footer className="text-center text-xs text-amber-700 dark:text-amber-300 py-6 border-t border-amber-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50">
-          Powered by Claude AI
-        </footer>
-        <Analytics />
+        <div className="min-h-screen w-full relative">
+          <div
+            className="absolute inset-0 z-0"
+            style={{ background: "radial-gradient(ellipse at center, #3d2914 0%, #2a1810 30%, #1a0f0a 60%, #0d0806 100%)" }}
+          />
+          <div className="relative z-10">
+            {children}
+            <footer className="text-center text-xs text-amber-300 py-6 border-t border-amber-800/40 bg-black/10">
+              Powered by Claude AI
+            </footer>
+            <Analytics />
+          </div>
+        </div>
       </body>
     </html>
   )
