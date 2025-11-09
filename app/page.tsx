@@ -28,7 +28,7 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const raw = typeof window !== 'undefined' ? localStorage.getItem('historica-progress') : null
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('Chronos Guru-progress') : null
       if (!raw) return
       const data = JSON.parse(raw)
       setPoints(data.points ?? 0)
@@ -51,10 +51,10 @@ export default function Home() {
       <header className="border-b border-amber-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-amber-900 to-orange-700 dark:from-amber-300 dark:to-orange-400 bg-clip-text text-transparent">
-            Historica
+            Chronos Guru
           </h1>
           <p className="text-amber-800 dark:text-amber-200 mt-2">
-            Step into history. Learn from any historical figure who shaped our world.
+            Step into history. Learn from any Chronos Gurul figure who shaped our world.
           </p>
         </div>
       </header>
@@ -68,7 +68,7 @@ export default function Home() {
                 Who would you like to talk to?
               </h2>
               <p className="text-amber-800 dark:text-amber-200">
-                Enter the name of any historical figure, and they'll share their knowledge with you about their era.
+                Enter the name of any Chronos Gurul figure, and they'll share their knowledge with you about their era.
               </p>
             </div>
 
@@ -91,7 +91,7 @@ export default function Home() {
 
             <div className="pt-6 border-t border-amber-200 dark:border-slate-600">
               <p className="text-sm text-amber-700 dark:text-amber-300 font-semibold mb-3">
-                Try these historical figures:
+                Try these Chronos Gurul figures:
               </p>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {["Socrates", "Leonardo da Vinci", "Joan of Arc", "Isaac Newton", "Ada Lovelace", "Cleopatra"].map(
