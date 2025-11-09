@@ -6,9 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { QuizModal } from "./quiz-modal"
-import { AvatarModeModal } from "./avatar-mode-modal"
-import { ImageCartoonizer } from "./image-cartoonizer"
-import { TalkingAvatar } from "./talking-avatar"
 
 interface Message {
   role: "user" | "assistant"
@@ -36,13 +33,6 @@ export function ChatInterface({ figure }: { figure: string }) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [figureGender, setFigureGender] = useState<'male' | 'female'>('male')
   const [translatingIndex, setTranslatingIndex] = useState<number | null>(null)
-
-  // Avatar mode states
-  const [showAvatarModeModal, setShowAvatarModeModal] = useState(true)
-  const [showImageUploader, setShowImageUploader] = useState(false)
-  const [avatarEnabled, setAvatarEnabled] = useState(false)
-  const [avatarImage, setAvatarImage] = useState<string | null>(null)
-
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -50,55 +40,6 @@ export function ChatInterface({ figure }: { figure: string }) {
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   useEffect(() => { scrollToBottom() }, [messages])
-
-  // Load avatar settings from localStorage on mount
-  useEffect(() => {
-    const savedAvatar = localStorage.getItem(`avatar-${figure}`)
-    if (savedAvatar) {
-      try {
-        const parsed = JSON.parse(savedAvatar)
-        setAvatarEnabled(parsed.enabled || false)
-        setAvatarImage(parsed.image || null)
-        setShowAvatarModeModal(false) // Don't show modal if already configured
-      } catch (e) {
-        // Invalid data, show modal
-      }
-    }
-  }, [figure])
-
-  // Avatar mode handlers
-  const handleAvatarModeSelect = (useAvatar: boolean) => {
-    setShowAvatarModeModal(false)
-    if (useAvatar) {
-      setShowImageUploader(true)
-    } else {
-      setAvatarEnabled(false)
-      localStorage.setItem(`avatar-${figure}`, JSON.stringify({ enabled: false, image: null }))
-    }
-  }
-
-  const handleImageProcessed = (imageDataUrl: string) => {
-    setAvatarImage(imageDataUrl)
-    setAvatarEnabled(true)
-    setShowImageUploader(false)
-    localStorage.setItem(`avatar-${figure}`, JSON.stringify({ enabled: true, image: imageDataUrl }))
-  }
-
-  const handleImageUploadSkip = () => {
-    setShowImageUploader(false)
-    setAvatarEnabled(false)
-    localStorage.setItem(`avatar-${figure}`, JSON.stringify({ enabled: false, image: null }))
-  }
-
-  const handleRemoveAvatar = () => {
-    setAvatarEnabled(false)
-    setAvatarImage(null)
-    localStorage.removeItem(`avatar-${figure}`)
-  }
-
-  const handleReplaceAvatar = () => {
-    setShowImageUploader(true)
-  }
 
   // Load available TTS voices
   useEffect(() => {
@@ -523,36 +464,7 @@ export function ChatInterface({ figure }: { figure: string }) {
 
   return (
     <>
-      {/* Avatar Mode Selection Modal */}
-      {showAvatarModeModal && (
-        <AvatarModeModal
-          figureName={figure}
-          onSelect={handleAvatarModeSelect}
-        />
-      )}
-
-      {/* Image Upload and Cartoonizer */}
-      {showImageUploader && (
-        <ImageCartoonizer
-          onImageProcessed={handleImageProcessed}
-          onSkip={handleImageUploadSkip}
-        />
-      )}
-
       <div className="max-w-4xl mx-auto px-6 py-8 flex flex-col min-h-[60vh]">
-        {/* Talking Avatar */}
-        {avatarEnabled && avatarImage && (
-          <div className="flex justify-center mb-6">
-            <TalkingAvatar
-              imageUrl={avatarImage}
-              isSpeaking={isSpeaking}
-              isThinking={loading}
-              onRemove={handleRemoveAvatar}
-              onReplace={handleReplaceAvatar}
-            />
-          </div>
-        )}
-
         {/* Messages */}
         <div className="flex-1 overflow-y-auto mb-6 space-y-4">
           {messages.map((msg, idx) => (
