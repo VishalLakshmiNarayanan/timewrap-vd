@@ -11,11 +11,36 @@ export async function POST(request: Request) {
   try {
     const { figure, messages, language }: RequestBody = await request.json()
 
+    const codeToName = (code?: string) => {
+      switch (code) {
+        case 'en': return 'English'
+        case 'es': return 'Spanish'
+        case 'fr': return 'French'
+        case 'de': return 'German'
+        case 'it': return 'Italian'
+        case 'pt': return 'Portuguese'
+        case 'ru': return 'Russian'
+        case 'zh': return 'Chinese'
+        case 'ja': return 'Japanese'
+        case 'ko': return 'Korean'
+        case 'ar': return 'Arabic'
+        case 'hi': return 'Hindi'
+        case 'nl': return 'Dutch'
+        case 'pl': return 'Polish'
+        case 'tr': return 'Turkish'
+        case 'sv': return 'Swedish'
+        case 'da': return 'Danish'
+        case 'fi': return 'Finnish'
+        case 'no': return 'Norwegian'
+        default: return 'English'
+      }
+    }
+
     const langInstruction = language === 'auto'
       ? `Respond in the language most associated with ${figure} (their native or historically primary language). If uncertain, use English.`
       : language
-        ? `Respond in ${language}.`
-        : `Respond in the user's language if indicated; otherwise English.`
+        ? `Respond in ${codeToName(language)}.`
+        : `Respond in English.`
 
     const systemPrompt = `You are ${figure}, a historical figure. You will answer questions about your life, era, and expertise.
 

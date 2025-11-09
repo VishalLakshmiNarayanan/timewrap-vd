@@ -16,10 +16,35 @@ export async function POST(request: Request) {
       return Response.json({ error: "Missing required parameters" }, { status: 400 })
     }
 
+    const codeToName = (code?: string) => {
+      switch (code) {
+        case 'en': return 'English'
+        case 'es': return 'Spanish'
+        case 'fr': return 'French'
+        case 'de': return 'German'
+        case 'it': return 'Italian'
+        case 'pt': return 'Portuguese'
+        case 'ru': return 'Russian'
+        case 'zh': return 'Chinese'
+        case 'ja': return 'Japanese'
+        case 'ko': return 'Korean'
+        case 'ar': return 'Arabic'
+        case 'hi': return 'Hindi'
+        case 'nl': return 'Dutch'
+        case 'pl': return 'Polish'
+        case 'tr': return 'Turkish'
+        case 'sv': return 'Swedish'
+        case 'da': return 'Danish'
+        case 'fi': return 'Finnish'
+        case 'no': return 'Norwegian'
+        default: return 'English'
+      }
+    }
+
     const langInstruction = language === 'auto'
       ? `Write in the language most associated with ${figure} (their native or historically primary language). If uncertain, use English.`
       : language
-        ? `Write in ${language}.`
+        ? `Write in ${codeToName(language)}.`
         : `Write in English unless the context implies otherwise.`
 
     const wrongBlock = wrong.map((w: WrongItem, i: number) => (

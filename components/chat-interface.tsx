@@ -10,6 +10,7 @@ import { QuizModal } from "./quiz-modal"
 interface Message {
   role: "user" | "assistant"
   content: string
+  englishTranslation?: string  // For non-English messages
 }
 
 type LangCode = 'en' | 'hi' | 'es' | 'fr' | 'de' | 'it' | 'ar' | 'zh' | 'ja' | 'pt' | 'ru' | 'ko' | 'nl' | 'pl' | 'tr' | 'sv' | 'da' | 'fi' | 'no'
@@ -418,7 +419,15 @@ const translations: Record<LangCode, {
 }
 
 export function ChatInterface({ figure }: { figure: string }) {
-  const [language, setLanguage] = useState<LangCode>('en')
+  // Load saved language from localStorage
+  const [language, setLanguage] = useState<LangCode>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('chronos-language')
+      return (saved as LangCode) || 'en'
+    }
+    return 'en'
+  })
+
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -438,6 +447,13 @@ export function ChatInterface({ figure }: { figure: string }) {
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const recognitionRef = useRef<any>(null)
+
+  // Save language preference to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('chronos-language', language)
+    }
+  }, [language])
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   useEffect(() => { scrollToBottom() }, [messages])
@@ -546,11 +562,17 @@ export function ChatInterface({ figure }: { figure: string }) {
     const textWithVariations = addSpeechVariations(text)
 
     try {
+      // If non-English, prefer browser TTS so locale/voice matches immediately
+      if (language !== 'en') {
+        useBrowserTTS(text)
+        return
+      }
+
       // Try Murf AI TTS first with gender-based voice selection
       const response = await fetch('/api/elevenlabs-tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: textWithVariations, gender: figureGender })
+        body: JSON.stringify({ text: textWithVariations, gender: figureGender, language })
       })
 
       const data = await response.json()
@@ -814,6 +836,11 @@ export function ChatInterface({ figure }: { figure: string }) {
                 `}
               >
                 <p className="text-sm leading-relaxed whitespace-pre-line">{msg.content}</p>
+                {msg.englishTranslation && language !== 'en' && (
+                  <p className="text-xs mt-2 opacity-50 italic leading-relaxed whitespace-pre-line border-t border-current/20 pt-2">
+                    {msg.englishTranslation}
+                  </p>
+                )}
                 {msg.role === "assistant" && (
                   <button
                     onClick={() => speakText(msg.content)}
