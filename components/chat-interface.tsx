@@ -424,7 +424,7 @@ export function ChatInterface({ figure }: { figure: string }) {
     try {
       // Multi-figure mode: get responses from all figures
       if (figures.length > 1) {
-        // Randomly select which figure responds (or they can take turns)
+        // First figure responds to user
         const respondingFigure = figures[Math.floor(Math.random() * figures.length)]
 
         const response = await fetch("/api/chat", {
@@ -450,39 +450,56 @@ export function ChatInterface({ figure }: { figure: string }) {
         setMessages((prev: Message[]) => [...prev, assistantMessage])
         speakText(data.message)
 
-        // Optionally, have another figure respond sometimes
-        if (Math.random() > 0.5 && figures.length > 1) {
-          const otherFigure = figures.find(f => f !== respondingFigure) || figures[0]
+        // Build updated conversation history with first response
+        let conversationHistory = [...messages, { role: "user", content: userMessage }, assistantMessage]
 
-          setTimeout(async () => {
-            setLoading(true)
+        // Have ALL other figures respond to create a debate
+        const otherFigures = figures.filter((f: string) => f !== respondingFigure)
 
-            const response2 = await fetch("/api/chat", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                figure: otherFigure,
-                messages: [...messages, { role: "user", content: userMessage }, assistantMessage],
-                language,
-                multiFigureMode: true,
-                allFigures: figures,
-                respondingTo: respondingFigure,
-              }),
-            })
+        for (let i = 0; i < otherFigures.length; i++) {
+          const otherFigure = otherFigures[i]
+          const previousSpeaker = i === 0 ? respondingFigure : otherFigures[i - 1]
 
-            if (response2.ok) {
-              const data2 = await response2.json()
-              const assistantMessage2: Message = {
-                role: "assistant",
-                content: data2.message,
-                speaker: otherFigure,
-              }
-              setMessages((prev: Message[]) => [...prev, assistantMessage2])
-              speakText(data2.message)
+          await new Promise(resolve => setTimeout(resolve, 1500 * (i + 1))) // Stagger responses
+
+          setLoading(true)
+
+          // Inject a system-level instruction for this figure to respond to the previous speaker
+          // This will be sent to the API but won't show in the UI
+          const contextPrompt = `You are in a debate with ${previousSpeaker}. They just shared their perspective. Now it's your turn to respond. You should directly address what ${previousSpeaker} said, either agreeing, disagreeing, adding nuance, or providing a different perspective. Speak naturally as if you're having a conversation with them.`
+
+          const response2 = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              figure: otherFigure,
+              messages: conversationHistory,
+              language,
+              multiFigureMode: true,
+              allFigures: figures,
+              respondingTo: previousSpeaker,
+              debateContext: contextPrompt,
+            }),
+          })
+
+          if (response2.ok) {
+            const data2 = await response2.json()
+            const assistantMessage2: Message = {
+              role: "assistant",
+              content: data2.message,
+              speaker: otherFigure,
             }
-            setLoading(false)
-          }, 1500) // Wait a bit for more natural conversation flow
+
+            // Add to UI
+            setMessages((prev: Message[]) => [...prev, assistantMessage2])
+            speakText(data2.message)
+
+            // Update conversation history for next figure
+            conversationHistory = [...conversationHistory, assistantMessage2]
+          }
         }
+
+        setLoading(false)
       } else {
         // Single figure mode (original behavior)
         const response = await fetch("/api/chat", {

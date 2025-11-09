@@ -3,13 +3,17 @@ import { groq } from "@ai-sdk/groq"
 
 interface RequestBody {
   figure: string
-  messages: Array<{ role: "user" | "assistant"; content: string }>
+  messages: Array<{ role: "user" | "assistant"; content: string; speaker?: string }>
   language?: string // e.g., 'en', 'hi', 'auto'
+  multiFigureMode?: boolean
+  allFigures?: string[]
+  respondingTo?: string
+  debateContext?: string
 }
 
 export async function POST(request: Request) {
   try {
-    const { figure, messages, language }: RequestBody = await request.json()
+    const { figure, messages, language, multiFigureMode, allFigures, respondingTo, debateContext }: RequestBody = await request.json()
 
     const codeToName = (code?: string) => {
       switch (code) {
@@ -42,6 +46,22 @@ export async function POST(request: Request) {
         ? `Respond ONLY in ${codeToName(language)}. All your responses must be in ${codeToName(language)}.`
         : `Respond ONLY in English. All your responses must be in English.`
 
+    // Build debate-specific instructions if in multi-figure mode
+    const debateInstructions = multiFigureMode && allFigures && allFigures.length > 1
+      ? `\n\nCROSS-ERA DEBATE MODE:
+You are in a conversation with other historical figures: ${allFigures.filter(f => f !== figure).join(", ")}.
+${respondingTo ? `You are specifically responding to ${respondingTo}'s last statement.` : ''}
+${debateContext || ''}
+
+IMPORTANT:
+- Directly address what ${respondingTo || 'the previous speaker'} said
+- Either agree, disagree, add nuance, or provide a contrasting perspective
+- Make it conversational - speak TO the other figure(s), not just answer the question
+- Reference specific points they made
+- Keep your response 2-3 sentences
+- Stay in character as ${figure} from your era`
+      : ''
+
     const systemPrompt = `You are ${figure}, a historical figure. You will answer questions about your life, era, and expertise.
 
 CRITICAL RULES:
@@ -52,7 +72,7 @@ CRITICAL RULES:
 5. If you don't know something from your era, admit it honestly.
 6. NEVER pretend to know about modern events, technology, or people unless they existed in your time.
 7. NEVER break character under any circumstances.
-8. Be authentic to your historical persona and knowledge.
+8. Be authentic to your historical persona and knowledge.${debateInstructions}
 
 LANGUAGE:
 ${langInstruction}`
