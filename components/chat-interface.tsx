@@ -232,18 +232,46 @@ export function ChatInterface({ figure }: { figure: string }) {
 
   const useBrowserTTS = (text: string) => {
     window.speechSynthesis.cancel()
+
+    const target = langToBCP47(language)
+    const lang2 = target.slice(0, 2).toLowerCase()
+
+    const findBestVoice = (): SpeechSynthesisVoice | undefined => {
+      if (!voices || voices.length === 0) return undefined
+      const byExact = voices.find(v => v.lang?.toLowerCase() === target.toLowerCase())
+      if (byExact) return byExact
+      const byPrefix = voices.find(v => v.lang?.toLowerCase().startsWith(lang2))
+      if (byPrefix) return byPrefix
+      const byGoogle = voices.find(v => v.name?.toLowerCase().includes('google') && v.lang?.toLowerCase().startsWith(lang2))
+      if (byGoogle) return byGoogle
+      return voices[0]
+    }
+
+    const speakWithRetry = (utt: SpeechSynthesisUtterance, tries = 3) => {
+      if (voices.length > 0 || tries <= 0) {
+        window.speechSynthesis.speak(utt)
+        return
+      }
+      setTimeout(() => speakWithRetry(utt, tries - 1), 250)
+    }
+
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = 0.9
     utterance.pitch = 1
-    const target = langToBCP47(language)
-    utterance.lang = target
-    const voice = voices.find(v => v.lang?.toLowerCase().startsWith(target.slice(0,2).toLowerCase()))
-    if (voice) utterance.voice = voice
+
+    const best = findBestVoice()
+    if (best) {
+      utterance.voice = best
+      if (best.lang) utterance.lang = best.lang
+    } else {
+      utterance.lang = target
+    }
+
     utterance.onstart = () => setIsSpeaking(true)
     utterance.onend = () => setIsSpeaking(false)
     utterance.onerror = () => setIsSpeaking(false)
     utteranceRef.current = utterance
-    window.speechSynthesis.speak(utterance)
+    speakWithRetry(utterance)
   }
 
   const base64ToBlob = (base64: string, mimeType: string): Blob => {
